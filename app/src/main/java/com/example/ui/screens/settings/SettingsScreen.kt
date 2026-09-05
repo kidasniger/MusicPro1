@@ -34,15 +34,20 @@ import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -96,6 +101,10 @@ fun SettingsScreen(
     onNavigateToLockScreenDemo: () -> Unit = {},
     onNavigateToBluetooth: () -> Unit = {},
     onNavigateToWidgets: (String) -> Unit = {},
+    onNavigateToStateGallery: (String) -> Unit = {},
+    onNavigateToOffline: () -> Unit = {},
+    onNavigateToLogo: () -> Unit = {},
+    onNavigateToPlayerVariants: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val themeMode by viewModel.themeMode.collectAsState()
@@ -449,7 +458,78 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // SECTION 6: INFOS LOGICIEL
+            // SECTION 6: ÉTATS & HORS-LIGNE (id="permStates", "errorStates", "emptyStates", "offline")
+            SettingsSectionHeader(title = "ÉTATS DE L'APPLICATION & MODE HORS-LIGNE", icon = Icons.Default.Security)
+
+            SettingsCard {
+                SettingsClickableItem(
+                    title = "Mode Hors-ligne (id=\"offline\")",
+                    subtitle = "Vérifier la disponibilité des services locaux et Cloud",
+                    icon = Icons.Default.WifiOff,
+                    accentColor = AmberAccent,
+                    onClick = onNavigateToOffline,
+                    testTag = "settings_offline_item"
+                )
+
+                HorizontalDivider(color = BorderSubtle, thickness = 0.5.dp)
+
+                SettingsClickableItem(
+                    title = "Galerie États de Permissions (id=\"permStates\")",
+                    subtitle = "Accordée, refusée, redemander l'accès",
+                    icon = Icons.Default.Security,
+                    accentColor = PurpleAccent,
+                    onClick = { onNavigateToStateGallery("perm") },
+                    testTag = "settings_perm_states_item"
+                )
+
+                HorizontalDivider(color = BorderSubtle, thickness = 0.5.dp)
+
+                SettingsClickableItem(
+                    title = "Galerie États d'Erreur (id=\"errorStates\")",
+                    subtitle = "LRCLIB indisponible, Groq IA indisponible, erreur décodage",
+                    icon = Icons.Default.Warning,
+                    accentColor = Color(0xFFFF5252),
+                    onClick = { onNavigateToStateGallery("error") },
+                    testTag = "settings_error_states_item"
+                )
+
+                HorizontalDivider(color = BorderSubtle, thickness = 0.5.dp)
+
+                SettingsClickableItem(
+                    title = "Galerie États Vides (id=\"emptyStates\")",
+                    subtitle = "Bibliothèque vide, recherche vide, favoris, file, paroles",
+                    icon = Icons.Default.HourglassEmpty,
+                    accentColor = CyanAccent,
+                    onClick = { onNavigateToStateGallery("empty") },
+                    testTag = "settings_empty_states_item"
+                )
+
+                HorizontalDivider(color = BorderSubtle, thickness = 0.5.dp)
+
+                SettingsClickableItem(
+                    title = "Variantes du Lecteur (id=\"playerVar\")",
+                    subtitle = "Modes Vinyle 33T, Spectre Audio DSP, Pochette Artistique",
+                    icon = Icons.Default.Tune,
+                    accentColor = PurpleAccent,
+                    onClick = onNavigateToPlayerVariants,
+                    testTag = "settings_player_variants_item"
+                )
+
+                HorizontalDivider(color = BorderSubtle, thickness = 0.5.dp)
+
+                SettingsClickableItem(
+                    title = "Identité Visuelle & Logo (id=\"logo\")",
+                    subtitle = "Charte graphique, icône néon cyan/violet, variantes",
+                    icon = Icons.Default.Palette,
+                    accentColor = CyanAccent,
+                    onClick = onNavigateToLogo,
+                    testTag = "settings_logo_item"
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // SECTION 7: INFOS LOGICIEL
             SettingsCard {
                 SettingsInfoItem(
                     title = "MusicPro v2.4.0 High-End",

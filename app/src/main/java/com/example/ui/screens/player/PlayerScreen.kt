@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -118,6 +119,10 @@ fun PlayerScreen(
     onCancelSleepTimer: () -> Unit = {},
     onNavigateBack: () -> Unit,
     onNavigateToLyrics: () -> Unit,
+    onNavigateToVariants: () -> Unit = {},
+    onNavigateToEqualizer: () -> Unit = {},
+    onNavigateToQueue: () -> Unit = {},
+    onNavigateToTrackInfo: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (activeTrack == null) {
@@ -302,6 +307,54 @@ fun PlayerScreen(
                             onClick = {
                                 showOptionsMenu = false
                                 isTrackInfoSheetVisible = true
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Variantes du lecteur", color = TextPrimary) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = null,
+                                    tint = PurpleAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showOptionsMenu = false
+                                onNavigateToVariants()
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Égaliseur plein écran", color = TextPrimary) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Equalizer,
+                                    contentDescription = null,
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showOptionsMenu = false
+                                onNavigateToEqualizer()
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("File d'attente complète", color = TextPrimary) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.QueueMusic,
+                                    contentDescription = null,
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showOptionsMenu = false
+                                onNavigateToQueue()
                             }
                         )
                     }

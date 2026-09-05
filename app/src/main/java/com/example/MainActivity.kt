@@ -13,6 +13,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +33,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.ui.navigation.MusicProBottomBar
 import com.example.ui.navigation.Screen
 import com.example.ui.screens.home.HomeScreen
+import com.example.ui.screens.library.AlbumsScreen
+import com.example.ui.screens.library.ArtistsScreen
 import com.example.ui.screens.library.FavoritesScreen
 import com.example.ui.screens.library.HistoryScreen
 import com.example.ui.screens.library.PlaylistDetailScreen
@@ -37,16 +43,27 @@ import com.example.ui.screens.lyrics.GroqConfigScreen
 import com.example.ui.screens.lyrics.GroqTransScreen
 import com.example.ui.screens.lyrics.IntegrateScreen
 import com.example.ui.screens.lyrics.LrclibScreen
+import com.example.ui.screens.lyrics.LyricsEmptyScreen
 import com.example.ui.screens.lyrics.LyricsScreen
 import com.example.ui.screens.lyrics.SourceSheetScreen
 import com.example.ui.screens.lyrics.SyncScreen
 import com.example.ui.screens.lyrics.TranslateScreen
 import com.example.ui.screens.onboarding.OnboardingScreen
 import com.example.ui.screens.permissions.PermissionsScreen
+import com.example.ui.screens.player.EqualizerScreen
 import com.example.ui.screens.player.PlayerScreen
+import com.example.ui.screens.player.PlayerVariantsScreen
+import com.example.ui.screens.player.QueueScreen
+import com.example.ui.screens.player.SleepTimerScreen
+import com.example.ui.screens.player.TrackInfoScreen
 import com.example.ui.screens.search.SearchScreen
 import com.example.ui.screens.settings.SettingsScreen
+import com.example.ui.screens.splash.LogoScreen
 import com.example.ui.screens.splash.SplashScreen
+import com.example.ui.screens.states.EmptyStatesGalleryScreen
+import com.example.ui.screens.states.ErrorStatesGalleryScreen
+import com.example.ui.screens.states.OfflineScreen
+import com.example.ui.screens.states.PermissionStatesGalleryScreen
 import com.example.ui.screens.system.BluetoothHeadphoneScreen
 import com.example.ui.screens.system.LockScreenPreview
 import com.example.ui.screens.system.NotificationPreviewScreen
@@ -128,7 +145,11 @@ fun MusicProApp(
         NavHost(
             navController = navController,
             startDestination = Screen.Splash.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { fadeIn(animationSpec = tween(280)) + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(280)) },
+            exitTransition = { fadeOut(animationSpec = tween(200)) + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(200)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(280)) + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(280)) },
+            popExitTransition = { fadeOut(animationSpec = tween(200)) + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(200)) }
         ) {
             // 1. Splash Screen
             composable(Screen.Splash.route) {
@@ -175,6 +196,7 @@ fun MusicProApp(
                 val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
                 val currentPositionMs by viewModel.currentPositionMs.collectAsStateWithLifecycle()
                 val durationMs by viewModel.durationMs.collectAsStateWithLifecycle()
+                val isOffline by viewModel.isOffline.collectAsStateWithLifecycle()
 
                 HomeScreen(
                     tracks = tracks,
@@ -182,6 +204,7 @@ fun MusicProApp(
                     isPlaying = isPlaying,
                     currentPositionMs = currentPositionMs,
                     durationMs = durationMs,
+                    isOffline = isOffline,
                     onTrackSelected = { track -> viewModel.playTrack(track) },
                     onTogglePlayPause = { viewModel.togglePlayPause() },
                     onNext = { viewModel.next() },
@@ -190,7 +213,11 @@ fun MusicProApp(
                     onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
                     onNavigateToFavorites = { navController.navigate(Screen.Favorites.route) },
                     onNavigateToHistory = { navController.navigate(Screen.History.route) },
-                    onNavigateToBluetooth = { navController.navigate(Screen.Bluetooth.route) }
+                    onNavigateToBluetooth = { navController.navigate(Screen.Bluetooth.route) },
+                    onNavigateToArtists = { navController.navigate(Screen.Artists.route) },
+                    onNavigateToAlbums = { navController.navigate(Screen.Albums.route) },
+                    onNavigateToOffline = { navController.navigate(Screen.Offline.route) },
+                    onRescanLibrary = { viewModel.scanLocalMusic() }
                 )
             }
 
@@ -247,7 +274,11 @@ fun MusicProApp(
                     onSetSleepAtEndOfTrack = { viewModel.setSleepAtEndOfTrack() },
                     onCancelSleepTimer = { viewModel.cancelSleepTimer() },
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToLyrics = { navController.navigate(Screen.Lyrics.route) }
+                    onNavigateToLyrics = { navController.navigate(Screen.Lyrics.route) },
+                    onNavigateToVariants = { navController.navigate(Screen.PlayerVariants.route) },
+                    onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
+                    onNavigateToQueue = { navController.navigate(Screen.Queue.route) },
+                    onNavigateToTrackInfo = { navController.navigate(Screen.TrackInfo.route) }
                 )
             }
 
@@ -375,7 +406,7 @@ fun MusicProApp(
                     viewModel = viewModel,
                     onBackClick = { navController.navigate(Screen.Home.route) },
                     onNavigateToGroqConfig = { navController.navigate(Screen.GroqConfig.route) },
-                    onNavigateToEqualizer = { navController.navigate(Screen.Player.route) },
+                    onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
                     onNavigateToNotificationDemo = { navController.navigate(Screen.Notification.route) },
                     onNavigateToLockScreenDemo = { navController.navigate(Screen.LockScreen.route) },
                     onNavigateToBluetooth = { navController.navigate(Screen.Bluetooth.route) },
@@ -385,7 +416,17 @@ fun MusicProApp(
                             "lyrics" -> navController.navigate(Screen.WidgetLyrics.route)
                             else -> navController.navigate(Screen.WidgetCompact.route)
                         }
-                    }
+                    },
+                    onNavigateToStateGallery = { target ->
+                        when (target) {
+                            "perm" -> navController.navigate(Screen.PermStates.route)
+                            "error" -> navController.navigate(Screen.ErrorStates.route)
+                            else -> navController.navigate(Screen.EmptyStates.route)
+                        }
+                    },
+                    onNavigateToOffline = { navController.navigate(Screen.Offline.route) },
+                    onNavigateToLogo = { navController.navigate(Screen.Logo.route) },
+                    onNavigateToPlayerVariants = { navController.navigate(Screen.PlayerVariants.route) }
                 )
             }
 
@@ -445,6 +486,114 @@ fun MusicProApp(
                     viewModel = viewModel,
                     initialTab = "lyrics",
                     onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // 26. Galerie des états de Permissions (id="permStates")
+            composable(Screen.PermStates.route) {
+                PermissionStatesGalleryScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // 27. Galerie des états d'Erreur Réseau & Décodage (id="errorStates")
+            composable(Screen.ErrorStates.route) {
+                ErrorStatesGalleryScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // 28. Galerie des états Vides (id="emptyStates")
+            composable(Screen.EmptyStates.route) {
+                EmptyStatesGalleryScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // 29. Écran Hors-ligne dédié & Simulation (id="offline")
+            composable(Screen.Offline.route) {
+                OfflineScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // 30. Logo & Identité visuelle (id="logo")
+            composable(Screen.Logo.route) {
+                LogoScreen(
+                    onContinue = { navController.navigate(Screen.Home.route) }
+                )
+            }
+
+            // 31. Variantes visuelles du lecteur (id="playerVar")
+            composable(Screen.PlayerVariants.route) {
+                PlayerVariantsScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // 32. File d'attente complète (id="queue")
+            composable(Screen.Queue.route) {
+                QueueScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // 33. Égaliseur DSP 5 bandes (id="eq")
+            composable(Screen.Equalizer.route) {
+                EqualizerScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // 34. Minuteur de sommeil (id="sleep")
+            composable(Screen.SleepTimer.route) {
+                SleepTimerScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // 35. Infos du morceau et télémétrie (id="infos")
+            composable(Screen.TrackInfo.route) {
+                TrackInfoScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // 36. Paroles Vides (id="lyricsEmpty")
+            composable(Screen.LyricsEmpty.route) {
+                LyricsEmptyScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onNavigateToLrclib = { navController.navigate(Screen.Lrclib.route) },
+                    onNavigateToGroq = { navController.navigate(Screen.GroqTrans.route) },
+                    onNavigateToIntegrate = { navController.navigate(Screen.Integrate.route) }
+                )
+            }
+
+            // 37. Artistes (id="artists")
+            composable(Screen.Artists.route) {
+                ArtistsScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onNavigateToPlayer = { navController.navigate(Screen.Player.route) }
+                )
+            }
+
+            // 38. Albums (id="albums")
+            composable(Screen.Albums.route) {
+                AlbumsScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onNavigateToPlayer = { navController.navigate(Screen.Player.route) }
                 )
             }
         }

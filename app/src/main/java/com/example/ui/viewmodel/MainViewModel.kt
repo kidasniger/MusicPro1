@@ -3,6 +3,7 @@ package com.example.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.data.local.MediaStoreAudioScanner
 import com.example.data.local.entities.TrackEntity
 import com.example.data.local.preferences.UserPreferencesRepository
 import com.example.data.lyrics.LyricLine
@@ -11,6 +12,8 @@ import com.example.data.remote.lrclib.LrclibResponse
 import com.example.data.repository.LyricsRepository
 import com.example.data.repository.MusicRepository
 import com.example.player.MusicPlayerManager
+import com.example.util.NetworkMonitor
+import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -43,7 +46,9 @@ class MainViewModel(
     private val musicRepository: MusicRepository,
     private val lyricsRepository: LyricsRepository,
     private val playerManager: MusicPlayerManager,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val networkMonitor: NetworkMonitor? = null,
+    private val mediaStoreScanner: MediaStoreAudioScanner? = null
 ) : ViewModel() {
 
     val isOnboardingCompleted: StateFlow<Boolean?> = userPreferencesRepository.isOnboardingCompleted
@@ -148,9 +153,6 @@ class MainViewModel(
     val connectedDeviceName: StateFlow<String?> = playerManager.connectedDeviceName
     val lastBluetoothEvent: StateFlow<String?> = playerManager.lastBluetoothEvent
 
-    private val _isSimulatedOffline = MutableStateFlow(false)
-    val isSimulatedOffline: StateFlow<Boolean> = _isSimulatedOffline.asStateFlow()
-
     private val _isOffline = MutableStateFlow(false)
     val isOffline: StateFlow<Boolean> = _isOffline.asStateFlow()
 
@@ -160,6 +162,18 @@ class MainViewModel(
     init {
         seedInitialTracksIfEmpty()
         observePlaybackForLyrics()
+        observeNetworkState()
+    }
+
+    private fun observeNetworkState() {
+        if (networkMonitor != null) {
+            _isOffline.value = !networkMonitor.isCurrentlyConnected()
+            viewModelScope.launch {
+                networkMonitor.isOnline.collect { online ->
+                    _isOffline.value = !online
+                }
+            }
+        }
     }
 
     private fun observePlaybackForLyrics() {
@@ -392,39 +406,43 @@ class MainViewModel(
         }
     }
 
-    fun toggleSimulateOffline(enabled: Boolean) {
-        _isSimulatedOffline.value = enabled
-        _isOffline.value = enabled
+    fun refreshNetworkStatus() {
+        if (networkMonitor != null) {
+            _isOffline.value = !networkMonitor.isCurrentlyConnected()
+        }
+    }
+
+    fun getNetworkTypeName(): String {
+        return networkMonitor?.getNetworkTypeName() ?: if (_isOffline.value) "Hors-ligne" else "Connecté"
+    }
+
+    fun refreshAudioDevices() {
+        playerManager.checkAudioOutputDevice()
     }
 
     fun scanLocalMusic() {
-        seedInitialTracksIfEmpty()
+        viewModelScope.launch {
+            if (mediaStoreScanner != null) {
+                val scanned = mediaStoreScanner.scanAudioFiles()
+                if (scanned.isNotEmpty()) {
+                    musicRepository.insertTracks(scanned)
+                    return@launch
+                }
+            }
+            seedInitialTracksIfEmpty()
+        }
     }
 
     // Gestion des Paroles (LRCLIB, Groq, Décalage, Traduction)
     fun loadLyricsForTrack(track: TrackEntity) {
         viewModelScope.launch {
             if (_isOffline.value) {
-                // Mode hors-ligne : recherche locale dans le cache/fallback
-                val fallback = getSampleLrcForTrack(track.title)
-                if (fallback != null) {
-                    val parsed = LrcParser.parse(fallback).map { line ->
-                        line.copy(translatedText = generateDemoTranslation(line.text))
-                    }
-                    _uiState.value = _uiState.value.copy(
-                        lyrics = parsed,
-                        lyricsSource = "Cache Local • Hors-ligne",
-                        isLyricsLoading = false,
-                        lyricsError = null
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        lyrics = emptyList(),
-                        lyricsSource = "",
-                        isLyricsLoading = false,
-                        lyricsError = "Mode hors-ligne actif : connexion requise pour joindre LRCLIB."
-                    )
-                }
+                _uiState.value = _uiState.value.copy(
+                    lyrics = emptyList(),
+                    lyricsSource = "",
+                    isLyricsLoading = false,
+                    lyricsError = "Mode hors-ligne actif : connexion requise pour joindre LRCLIB."
+                )
                 return@launch
             }
 
@@ -446,24 +464,18 @@ class MainViewModel(
 
                 if (!syncedLrc.isNullOrBlank()) {
                     val parsed = LrcParser.parse(syncedLrc)
-                    // Ajout de traductions françaises pour la démo
-                    val withTranslations = parsed.map { line ->
-                        line.copy(translatedText = generateDemoTranslation(line.text))
-                    }
                     _uiState.value = _uiState.value.copy(
-                        lyrics = withTranslations,
-                        lyricsSource = "LRCLIB • Synchronisé (Auto)",
+                        lyrics = parsed,
+                        lyricsSource = "LRCLIB • Synchronisé",
                         isLyricsLoading = false,
                         lyricsError = null
                     )
                 } else if (!plainLrc.isNullOrBlank()) {
-                    // Paroles non-synchronisées converties en lignes
                     val lines = plainLrc.lines().filter { it.isNotBlank() }.mapIndexed { idx, line ->
                         LyricLine(
                             timeFormatted = "--:--",
                             timeMs = idx * 4000L,
-                            text = line.trim(),
-                            translatedText = generateDemoTranslation(line.trim())
+                            text = line.trim()
                         )
                     }
                     _uiState.value = _uiState.value.copy(
@@ -473,48 +485,20 @@ class MainViewModel(
                         lyricsError = null
                     )
                 } else {
-                    // Fallback sur paroles locales par défaut pour une expérience riche
-                    val fallback = getSampleLrcForTrack(track.title)
-                    if (fallback != null) {
-                        val parsed = LrcParser.parse(fallback).map { line ->
-                            line.copy(translatedText = generateDemoTranslation(line.text))
-                        }
-                        _uiState.value = _uiState.value.copy(
-                            lyrics = parsed,
-                            lyricsSource = "LRCLIB • 98% match",
-                            isLyricsLoading = false,
-                            lyricsError = null
-                        )
-                    } else {
-                        _uiState.value = _uiState.value.copy(
-                            lyrics = emptyList(),
-                            lyricsSource = "",
-                            isLyricsLoading = false,
-                            lyricsError = "Aucune parole trouvée pour ce morceau."
-                        )
-                    }
-                }
-            }.onFailure {
-                // Si hors-ligne ou erreur réseau, on charge les paroles de démonstration correspondantes
-                val fallback = getSampleLrcForTrack(track.title)
-                if (fallback != null) {
-                    val parsed = LrcParser.parse(fallback).map { line ->
-                        line.copy(translatedText = generateDemoTranslation(line.text))
-                    }
-                    _uiState.value = _uiState.value.copy(
-                        lyrics = parsed,
-                        lyricsSource = "LRCLIB • Local Cache",
-                        isLyricsLoading = false,
-                        lyricsError = null
-                    )
-                } else {
                     _uiState.value = _uiState.value.copy(
                         lyrics = emptyList(),
                         lyricsSource = "",
                         isLyricsLoading = false,
-                        lyricsError = "Impossible de récupérer les paroles."
+                        lyricsError = "Aucune parole trouvée pour ce morceau."
                     )
                 }
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    lyrics = emptyList(),
+                    lyricsSource = "",
+                    isLyricsLoading = false,
+                    lyricsError = "Impossible de récupérer les paroles (${error.localizedMessage ?: "Erreur réseau"})."
+                )
             }
         }
     }
@@ -540,9 +524,7 @@ class MainViewModel(
     fun applyLrclibResult(result: LrclibResponse) {
         val synced = result.syncedLyrics ?: result.plainLyrics ?: ""
         if (synced.isNotBlank()) {
-            val parsed = LrcParser.parse(synced).map { line ->
-                line.copy(translatedText = generateDemoTranslation(line.text))
-            }
+            val parsed = LrcParser.parse(synced)
             _uiState.value = _uiState.value.copy(
                 lyrics = parsed,
                 lyricsSource = "LRCLIB • ${result.artistName ?: "Manuel"}",
@@ -579,9 +561,9 @@ class MainViewModel(
         }
     }
 
-    fun setThemeMode(mode: String) {
+    fun setThemeMode(theme: String) {
         viewModelScope.launch {
-            userPreferencesRepository.setThemeMode(mode)
+            userPreferencesRepository.setThemeMode(theme)
         }
     }
 
@@ -615,13 +597,71 @@ class MainViewModel(
         }
     }
 
-    fun simulateBluetoothConnect(deviceName: String = "Sony WH-1000XM5") {
-        playerManager.onBluetoothDeviceConnected(deviceName)
-    }
+    fun transcribeTrackWithGroq(
+        track: TrackEntity,
+        onStatusUpdate: (String) -> Unit,
+        onSuccess: (List<LyricLine>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val apiKey = groqApiKey.value
+            if (apiKey.isBlank()) {
+                onError("Clé API Groq non configurée. Veuillez renseigner votre clé API dans les Paramètres.")
+                return@launch
+            }
+            if (track.path.isBlank()) {
+                onError("Aucun fichier audio physique associé au morceau '${track.title}'.")
+                return@launch
+            }
+            val audioFile = File(track.path)
+            if (!audioFile.exists()) {
+                onError("Fichier audio introuvable sur le stockage de l'appareil (${track.path}).")
+                return@launch
+            }
 
-    fun simulateBluetoothDisconnect(deviceName: String = "Sony WH-1000XM5") {
-        playerManager.pause()
-        playerManager.onBluetoothDeviceDisconnected(deviceName)
+            onStatusUpdate("Envoi du fichier audio à Groq Whisper (${groqModel.value})...")
+            val result = lyricsRepository.transcribeAudioWithGroq(
+                audioFile = audioFile,
+                apiKey = apiKey,
+                model = groqModel.value
+            )
+
+            result.onSuccess { response ->
+                val segments = response.segments
+                val lines = if (!segments.isNullOrEmpty()) {
+                    segments.map { seg ->
+                        val startSec = seg.start ?: 0.0
+                        val ms = (startSec * 1000).toLong()
+                        val minutes = (ms / 1000) / 60
+                        val seconds = (ms / 1000) % 60
+                        LyricLine(
+                            timeFormatted = String.format("%02d:%02d", minutes, seconds),
+                            timeMs = ms,
+                            text = seg.text?.trim() ?: ""
+                        )
+                    }
+                } else if (!response.text.isNullOrBlank()) {
+                    response.text.lines().filter { it.isNotBlank() }.mapIndexed { idx, line ->
+                        LyricLine(
+                            timeFormatted = "--:--",
+                            timeMs = idx * 4000L,
+                            text = line.trim()
+                        )
+                    }
+                } else {
+                    emptyList()
+                }
+
+                if (lines.isNotEmpty()) {
+                    setCustomLyrics(lines, "Groq Whisper • Transcription IA")
+                    onSuccess(lines)
+                } else {
+                    onError("Aucune parole détectée par Groq Whisper.")
+                }
+            }.onFailure { error ->
+                onError("Erreur Groq Whisper : ${error.localizedMessage ?: "Échec requête"}")
+            }
+        }
     }
 
     fun setCustomLyrics(lyrics: List<LyricLine>, sourceName: String) {
@@ -630,76 +670,6 @@ class MainViewModel(
             lyricsSource = sourceName,
             lyricsError = null
         )
-    }
-
-    private fun getSampleLrcForTrack(title: String): String? {
-        return when {
-            title.contains("As It Was", ignoreCase = true) -> """
-                [00:00.00]Hold on, as it was
-                [00:02.50]You know it's not the same as it was
-                [00:05.40]In this world, it's just us
-                [00:09.10]You know it's not the same as it was
-                [00:13.20]As it was, as it was
-                [00:17.00]You know it's not the same
-                [00:20.50]Answer the phone
-                [00:22.20]Harry, you're no good alone
-                [00:25.80]Why are you sitting at home on the floor?
-                [00:29.50]What kind of pills are you on?
-                [00:34.00]Ringin' the bell
-                [00:36.50]Nobody's comin' to help
-                [00:40.00]Your daddy lives by himself
-                [00:43.80]He just wants to know that you're well, oh
-                [00:49.00]In this world, it's just us
-                [00:53.10]You know it's not the same as it was
-                [00:57.00]In this world, it's just us
-                [01:00.80]You know it's not the same as it was
-                [01:05.10]As it was, as it was
-                [01:09.00]You know it's not the same
-            """.trimIndent()
-            title.contains("Blinding Lights", ignoreCase = true) -> """
-                [00:00.00]Yeah
-                [00:14.00]I've been tryna call
-                [00:17.50]I've been on my own for long enough
-                [00:21.00]Maybe you can show me how to love, maybe
-                [00:29.00]I'm going through withdrawals
-                [00:33.00]You don't even have to do too much
-                [00:36.50]You can turn me on with just a touch, baby
-                [00:44.00]I look around and Sin City's cold and empty
-                [00:49.00]No one's around to judge me
-                [00:52.50]I can't see clearly when you're gone
-                [00:59.00]I said, ooh, I'm blinded by the lights
-                [01:06.00]No, I can't sleep until I feel your touch
-            """.trimIndent()
-            else -> """
-                [00:00.00]MusicPro - Paroles synchronisées
-                [00:04.00]Lecture audio locale en cours...
-                [00:09.00]Transmis avec précision par LRCLIB
-                [00:15.00]Synchronisation automatique des lignes
-                [00:22.00]Expérience audio enrichie et immersive
-            """.trimIndent()
-        }
-    }
-
-    private fun generateDemoTranslation(text: String): String {
-        return when {
-            text.contains("Hold on", ignoreCase = true) -> "Attends, comme c'était avant"
-            text.contains("You know it's not the same", ignoreCase = true) -> "Tu sais que ce n'est plus la même chose"
-            text.contains("In this world, it's just us", ignoreCase = true) -> "Dans ce monde, il n'y a que nous"
-            text.contains("As it was", ignoreCase = true) -> "Comme c'était, comme avant"
-            text.contains("Answer the phone", ignoreCase = true) -> "Réponds au téléphone"
-            text.contains("Harry, you're no good alone", ignoreCase = true) -> "Harry, tu n'es pas bien tout seul"
-            text.contains("Why are you sitting", ignoreCase = true) -> "Pourquoi es-tu assis par terre à la maison ?"
-            text.contains("Ringin' the bell", ignoreCase = true) -> "Tu sonnes à la porte"
-            text.contains("Nobody's comin'", ignoreCase = true) -> "Personne ne vient t'aider"
-            text.contains("Your daddy lives by himself", ignoreCase = true) -> "Ton père vit seul"
-            text.contains("He just wants to know", ignoreCase = true) -> "Il veut juste savoir que tu vas bien"
-            text.contains("I've been tryna call", ignoreCase = true) -> "J'ai essayé d'appeler"
-            text.contains("I've been on my own", ignoreCase = true) -> "Je suis resté seul assez longtemps"
-            text.contains("Maybe you can show me", ignoreCase = true) -> "Peut-être peux-tu m'apprendre à aimer"
-            text.contains("blinded by the lights", ignoreCase = true) -> "Aveuglé par les lumières de la ville"
-            text.contains("I can't sleep", ignoreCase = true) -> "Je ne peux pas dormir sans ton contact"
-            else -> "Traduction : $text"
-        }
     }
 
     override fun onCleared() {
@@ -712,12 +682,21 @@ class MainViewModelFactory(
     private val musicRepository: MusicRepository,
     private val lyricsRepository: LyricsRepository,
     private val playerManager: MusicPlayerManager,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val networkMonitor: NetworkMonitor? = null,
+    private val mediaStoreScanner: MediaStoreAudioScanner? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
-            return MainViewModel(musicRepository, lyricsRepository, playerManager, userPreferencesRepository) as T
+            return MainViewModel(
+                musicRepository,
+                lyricsRepository,
+                playerManager,
+                userPreferencesRepository,
+                networkMonitor,
+                mediaStoreScanner
+            ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

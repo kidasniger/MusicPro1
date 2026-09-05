@@ -17,6 +17,8 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import com.example.data.local.MediaStoreAudioScanner
+import com.example.util.NetworkMonitor
 import java.util.concurrent.TimeUnit
 
 interface AppContainer {
@@ -25,6 +27,8 @@ interface AppContainer {
     val lyricsRepository: LyricsRepository
     val playerManager: MusicPlayerManager
     val userPreferencesRepository: UserPreferencesRepository
+    val networkMonitor: NetworkMonitor
+    val mediaStoreScanner: MediaStoreAudioScanner
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -87,5 +91,13 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val userPreferencesRepository: UserPreferencesRepository by lazy {
         DefaultUserPreferencesRepository(context)
+    }
+
+    override val networkMonitor: NetworkMonitor by lazy {
+        NetworkMonitor(context)
+    }
+
+    override val mediaStoreScanner: MediaStoreAudioScanner by lazy {
+        MediaStoreAudioScanner(context)
     }
 }

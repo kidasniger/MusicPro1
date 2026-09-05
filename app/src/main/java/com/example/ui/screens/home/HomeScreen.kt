@@ -55,8 +55,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.entities.TrackEntity
+import com.example.ui.components.EmptyStateComposable
+import com.example.ui.components.EmptyStateType
 import com.example.ui.components.MiniPlayer
 import com.example.ui.components.MusicProLogo
+import com.example.ui.components.OfflineBanner
 import com.example.ui.components.TrackCoverArt
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderSubtle
@@ -86,6 +89,11 @@ fun HomeScreen(
     onNavigateToFavorites: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
     onNavigateToBluetooth: () -> Unit = {},
+    onNavigateToArtists: () -> Unit = {},
+    onNavigateToAlbums: () -> Unit = {},
+    isOffline: Boolean = false,
+    onNavigateToOffline: () -> Unit = {},
+    onRescanLibrary: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedCategory by remember { mutableStateOf("Titres") }
@@ -197,6 +205,13 @@ fun HomeScreen(
                 }
             }
 
+            // Bannière Mode Hors-ligne si actif
+            OfflineBanner(
+                isOffline = isOffline,
+                onBannerClick = onNavigateToOffline,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
+            )
+
             // Onglets / Filtres de catégories (Titres, Artistes, Albums...)
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 20.dp),
@@ -220,7 +235,13 @@ fun HomeScreen(
                                 color = if (isSelected) Color.Transparent else BorderSubtle,
                                 shape = RoundedCornerShape(9999.dp)
                             )
-                            .clickable { selectedCategory = cat }
+                            .clickable {
+                                when (cat) {
+                                    "Artistes" -> onNavigateToArtists()
+                                    "Albums" -> onNavigateToAlbums()
+                                    else -> selectedCategory = cat
+                                }
+                            }
                             .padding(horizontal = 16.dp, vertical = 7.dp)
                             .testTag("category_tab_$cat")
                     ) {
@@ -281,7 +302,7 @@ fun HomeScreen(
                 }
             }
 
-            // Liste principale des morceaux
+            // Liste principale des morceaux ou État vide partagé
             val displayedTracks = remember(tracks, selectedCategory) {
                 when (selectedCategory) {
                     "Favoris" -> tracks.filter { it.isFavorite }
@@ -289,28 +310,57 @@ fun HomeScreen(
                 }
             }
 
-            LazyColumn(
-                contentPadding = PaddingValues(
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = 4.dp,
-                    bottom = 96.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .testTag("tracks_list")
-            ) {
-                items(displayedTracks, key = { it.id }) { track ->
-                    val isActive = activeTrack?.id == track.id
-                    TrackListItem(
-                        track = track,
-                        isActive = isActive,
-                        isPlaying = isPlaying && isActive,
-                        onTrackClick = { onTrackSelected(track) },
-                        onToggleFavorite = { onToggleFavorite(track) }
+            if (tracks.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    EmptyStateComposable(
+                        type = EmptyStateType.LIBRARY,
+                        onPrimaryAction = onRescanLibrary
                     )
+                }
+            } else if (displayedTracks.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    EmptyStateComposable(
+                        type = if (selectedCategory == "Favoris") EmptyStateType.FAVORITES else EmptyStateType.SEARCH,
+                        customSubtitle = "Aucun titre trouvé dans la catégorie « $selectedCategory ».",
+                        onPrimaryAction = { selectedCategory = "Titres" }
+                    )
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(
+                        start = 20.dp,
+                        end = 20.dp,
+                        top = 4.dp,
+                        bottom = 96.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .testTag("tracks_list")
+                ) {
+                    items(displayedTracks, key = { it.id }) { track ->
+                        val isActive = activeTrack?.id == track.id
+                        TrackListItem(
+                            track = track,
+                            isActive = isActive,
+                            isPlaying = isPlaying && isActive,
+                            onTrackClick = { onTrackSelected(track) },
+                            onToggleFavorite = { onToggleFavorite(track) }
+                        )
+                    }
                 }
             }
         }

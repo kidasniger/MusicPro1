@@ -1,6 +1,9 @@
 package com.example.player
 
 import android.content.Context
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.os.Build
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -51,13 +54,14 @@ class MusicPlayerManager(context: Context) {
     private val _isBluetoothConnected = MutableStateFlow(false)
     val isBluetoothConnected: StateFlow<Boolean> = _isBluetoothConnected.asStateFlow()
 
-    private val _connectedDeviceName = MutableStateFlow<String?>("Sony WH-1000XM5")
+    private val _connectedDeviceName = MutableStateFlow<String?>(null)
     val connectedDeviceName: StateFlow<String?> = _connectedDeviceName.asStateFlow()
 
     private val _lastBluetoothEvent = MutableStateFlow<String?>("Prêt")
     val lastBluetoothEvent: StateFlow<String?> = _lastBluetoothEvent.asStateFlow()
 
     init {
+        checkAudioOutputDevice()
         exoPlayer.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlayingNow: Boolean) {
                 _isPlaying.value = isPlayingNow
@@ -208,6 +212,53 @@ class MusicPlayerManager(context: Context) {
         }
     }
 
+    fun checkAudioOutputDevice() {
+        val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        if (audioManager != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                val btDevice = devices.firstOrNull {
+                    it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                    it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                    (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && (it.type == AudioDeviceInfo.TYPE_BLE_HEADSET || it.type == AudioDeviceInfo.TYPE_BLE_SPEAKER))
+                }
+                val wiredDevice = devices.firstOrNull {
+                    it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                    it.type == AudioDeviceInfo.TYPE_USB_HEADSET ||
+                    it.type == AudioDeviceInfo.TYPE_USB_DEVICE
+                }
+
+                if (btDevice != null) {
+                    _isBluetoothConnected.value = true
+                    val name = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        btDevice.productName?.toString()?.takeIf { it.isNotBlank() } ?: "Casque Bluetooth A2DP"
+                    } else {
+                        "Casque Bluetooth A2DP"
+                    }
+                    _connectedDeviceName.value = name
+                    _lastBluetoothEvent.value = "Connecté : $name"
+                } else if (wiredDevice != null) {
+                    _isBluetoothConnected.value = true
+                    val name = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        wiredDevice.productName?.toString()?.takeIf { it.isNotBlank() } ?: "Casque audio filaire / USB"
+                    } else {
+                        "Casque Filaire"
+                    }
+                    _connectedDeviceName.value = name
+                    _lastBluetoothEvent.value = "Connecté : $name"
+                } else {
+                    _isBluetoothConnected.value = false
+                    _connectedDeviceName.value = null
+                    _lastBluetoothEvent.value = "Haut-parleur de l'appareil"
+                }
+            } catch (e: Exception) {
+                _isBluetoothConnected.value = false
+                _connectedDeviceName.value = null
+            }
+        }
+    }
+
     fun onBluetoothDeviceConnected(name: String) {
         _isBluetoothConnected.value = true
         _connectedDeviceName.value = name
@@ -216,6 +267,7 @@ class MusicPlayerManager(context: Context) {
 
     fun onBluetoothDeviceDisconnected(name: String) {
         _isBluetoothConnected.value = false
+        _connectedDeviceName.value = null
         _lastBluetoothEvent.value = "Déconnecté ($name) • Lecture mise en pause automatique"
     }
 

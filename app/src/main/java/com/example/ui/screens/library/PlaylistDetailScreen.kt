@@ -61,6 +61,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.entities.PlaylistEntity
 import com.example.data.local.entities.TrackEntity
+import com.example.ui.components.EmptyStateComposable
+import com.example.ui.components.EmptyStateType
 import com.example.ui.components.MiniPlayer
 import com.example.ui.components.TrackCoverArt
 import com.example.ui.theme.BackgroundDark
@@ -643,66 +645,12 @@ fun PlaylistDetailEmptyState(
     onAddTracksClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    EmptyStateComposable(
+        type = EmptyStateType.PLAYLISTS,
+        customTitle = "Playlist vide",
+        customSubtitle = "Ajoute tes premiers morceaux pour commencer à écouter cette playlist.",
+        primaryActionLabel = "Ajouter des morceaux",
+        onPrimaryAction = onAddTracksClick,
         modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 40.dp, horizontal = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(CyanAccent.copy(alpha = 0.12f))
-                .border(2.dp, CyanAccent.copy(alpha = 0.30f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.QueueMusic,
-                contentDescription = null,
-                tint = CyanAccent,
-                modifier = Modifier.size(32.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Playlist vide",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Text(
-            text = "Ajoute tes premiers morceaux pour commencer à écouter cette playlist.",
-            fontSize = 12.sp,
-            color = TextSecondary,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(CyanAccent, PurpleAccent)
-                    )
-                )
-                .clickable { onAddTracksClick() }
-                .padding(horizontal = 20.dp, vertical = 10.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "AJOUTER DES MORCEAUX",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = BackgroundDark
-            )
-        }
-    }
+    )
 }

@@ -36,6 +36,8 @@ sealed class Screen(val route: String) {
     object PlaylistDetail : Screen("playlistDetail/{playlistId}") {
         fun createRoute(playlistId: Long) = "playlistDetail/$playlistId"
     }
+    object Artists : Screen("artists")
+    object Albums : Screen("albums")
 
     // Utils
     object SleepTimer : Screen("sleep")
