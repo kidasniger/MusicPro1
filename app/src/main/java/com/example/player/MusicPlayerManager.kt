@@ -26,9 +26,16 @@ class MusicPlayerManager(context: Context) {
 
     val audioEffectsManager = AudioEffectsManager()
 
-    val exoPlayer: ExoPlayer = ExoPlayer.Builder(appContext).build().apply {
-        repeatMode = Player.REPEAT_MODE_ALL
-    }
+    private val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
+        .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC)
+        .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+        .build()
+
+    val exoPlayer: ExoPlayer = ExoPlayer.Builder(appContext)
+        .setAudioAttributes(audioAttributes, true)
+        .build().apply {
+            repeatMode = Player.REPEAT_MODE_ALL
+        }
 
     private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_ALL)
     val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
@@ -307,7 +314,13 @@ class MusicPlayerManager(context: Context) {
     }
 
     fun updateActiveTrackFavorite(isFavorite: Boolean) {
-        _activeTrack.value = _activeTrack.value?.copy(isFavorite = isFavorite)
+        val current = _activeTrack.value ?: return
+        _activeTrack.value = current.copy(isFavorite = isFavorite)
+        val q = _queue.value.toMutableList()
+        if (currentIndex in q.indices) {
+            q[currentIndex] = q[currentIndex].copy(isFavorite = isFavorite)
+            _queue.value = q
+        }
     }
 
     fun setRepeatMode(mode: Int) {
@@ -381,25 +394,42 @@ class MusicPlayerManager(context: Context) {
     }
 
     private suspend fun fadeVolume(down: Boolean) {
-        val steps = 6
-        val stepDelay = (crossfadeDurationMs / (steps * 2)).coerceIn(10L, 80L)
+        val totalMs = crossfadeDurationMs.coerceIn(500L, 10000L)
+        val steps = 8
+        val stepDelay = (totalMs / (steps * 2)).coerceAtLeast(30L)
         for (i in 1..steps) {
             val volume = if (down) (steps - i) / steps.toFloat() else i / steps.toFloat()
-            exoPlayer.volume = volume
+            try { exoPlayer.volume = volume.coerceIn(0f, 1f) } catch (_: Exception) {}
             delay(stepDelay)
         }
         if (!down) {
-            exoPlayer.volume = 1f
+            try { exoPlayer.volume = 1f } catch (_: Exception) {}
         }
     }
 
+    private var isCrossfading = false
+
     private fun startProgressTracker() {
         progressJob?.cancel()
+        isCrossfading = false
         progressJob = scope.launch {
             while (isActive) {
                 if (exoPlayer.isPlaying) {
-                    _currentPositionMs.value = exoPlayer.currentPosition
-                    _durationMs.value = exoPlayer.duration.coerceAtLeast(_durationMs.value)
+                    val pos = exoPlayer.currentPosition
+                    val dur = exoPlayer.duration.coerceAtLeast(_durationMs.value)
+                    _currentPositionMs.value = pos
+                    _durationMs.value = dur
+
+                    // Détection du fondu enchaîné avant la fin du morceau
+                    if (crossfadeDurationMs > 0L && dur > 5000L && !isCrossfading) {
+                        val remaining = dur - pos
+                        if (remaining in 1L..crossfadeDurationMs && _repeatMode.value != Player.REPEAT_MODE_ONE) {
+                            isCrossfading = true
+                            launch {
+                                skipToNext()
+                            }
+                        }
+                    }
                 } else if (_isPlaying.value) {
                     // Progression pas-à-pas si en lecture
                     _currentPositionMs.value = (_currentPositionMs.value + 500L).coerceAtMost(

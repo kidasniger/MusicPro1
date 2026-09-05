@@ -141,14 +141,19 @@ class MusicPlaybackService : MediaSessionService() {
             this, 3, nextIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val largeIcon = generateArtBitmap(track.coverGradient, track.title)
+        val largeIcon = loadCoverArtBitmap(track)
+
+        val lyricsSnippet = track.embeddedLyrics?.lineSequence()
+            ?.map { it.trim() }
+            ?.firstOrNull { it.isNotBlank() && !it.startsWith("[") }
+            ?: track.embeddedLyrics?.take(80)
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setLargeIcon(largeIcon)
             .setContentTitle(track.title)
             .setContentText("${track.artist} • ${track.album.ifEmpty { "MusicPro" }}")
-            .setSubText("${track.format} • ${track.bitrate} kbps")
+            .setSubText(if (!lyricsSnippet.isNullOrBlank()) "♪ $lyricsSnippet" else "${track.format} • ${track.bitrate} kbps")
             .setContentIntent(contentPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(isPlaying)
@@ -159,12 +164,35 @@ class MusicPlaybackService : MediaSessionService() {
                 playPausePendingIntent
             )
             .addAction(android.R.drawable.ic_media_next, "Suivant", nextPendingIntent)
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText("${track.artist}\n${track.album.ifEmpty { "MusicPro" }} • ${track.format} ${track.bitrate} kbps")
+
+        mediaSession?.let { session ->
+            builder.setStyle(
+                androidx.media3.session.MediaStyleNotificationHelper.MediaStyle(session)
+                    .setShowActionsInCompactView(0, 1, 2)
             )
+        }
 
         return builder.build()
+    }
+
+    private fun loadCoverArtBitmap(track: TrackEntity): Bitmap {
+        if (!track.coverArtUri.isNullOrBlank()) {
+            try {
+                val uri = android.net.Uri.parse(track.coverArtUri)
+                val stream = if (track.coverArtUri.startsWith("content://")) {
+                    contentResolver.openInputStream(uri)
+                } else if (track.coverArtUri.startsWith("file://")) {
+                    java.io.File(uri.path ?: "").inputStream()
+                } else {
+                    java.io.File(track.coverArtUri).inputStream()
+                }
+                stream?.use {
+                    val bmp = android.graphics.BitmapFactory.decodeStream(it)
+                    if (bmp != null) return bmp
+                }
+            } catch (_: Exception) {}
+        }
+        return generateArtBitmap(track.coverGradient, track.title)
     }
 
     private fun generateArtBitmap(gradientStr: String?, title: String): Bitmap {

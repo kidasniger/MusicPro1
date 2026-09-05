@@ -30,6 +30,7 @@ import com.example.ui.theme.PurpleAccent
 import com.example.ui.theme.PurpleDeep
 import com.example.ui.theme.SurfacePurpleTint
 
+@Composable
 fun parseGradientString(gradientStr: String?): Brush {
     if (gradientStr == null) {
         return Brush.linearGradient(listOf(CyanAccent, PurpleAccent))

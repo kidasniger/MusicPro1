@@ -18,6 +18,8 @@ class AudioEffectsManager {
     var virtualizerStrength: Short = 400 // 0..1000
         private set
 
+    private val savedBandLevels = mutableMapOf<Short, Short>()
+
     fun initAudioEffects(audioSessionId: Int) {
         if (audioSessionId <= 0 || audioSessionId == currentSessionId) return
         release()
@@ -26,6 +28,14 @@ class AudioEffectsManager {
         try {
             equalizer = Equalizer(0, audioSessionId).apply {
                 enabled = isEnabled
+                // Réappliquer les niveaux sauvegardés
+                savedBandLevels.forEach { (band, level) ->
+                    try {
+                        if (band < numberOfBands) {
+                            setBandLevel(band, level)
+                        }
+                    } catch (_: Exception) {}
+                }
             }
         } catch (e: Exception) {
             Log.w("AudioEffectsManager", "Equalizer non disponible: ${e.message}")
@@ -62,6 +72,7 @@ class AudioEffectsManager {
     }
 
     fun setBandLevel(band: Short, levelMilliBels: Short) {
+        savedBandLevels[band] = levelMilliBels
         try {
             equalizer?.setBandLevel(band, levelMilliBels)
         } catch (ignored: Exception) {}
@@ -97,6 +108,9 @@ class AudioEffectsManager {
             "jazz" -> listOf(300, 200, -100, 200, 300)
             "classique" -> listOf(400, 200, -200, 300, 300)
             else -> listOf(0, 0, 0, 0, 0)
+        }
+        for (i in curves.indices) {
+            savedBandLevels[i.toShort()] = curves[i].toShort()
         }
         try {
             val numBands = equalizer?.numberOfBands ?: 5

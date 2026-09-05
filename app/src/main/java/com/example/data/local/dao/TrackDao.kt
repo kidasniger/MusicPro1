@@ -46,6 +46,9 @@ interface TrackDao {
     @Query("DELETE FROM tracks WHERE path = '' OR path IS NULL OR (path NOT LIKE 'content://%' AND path NOT LIKE '/%')")
     suspend fun deleteSimulatedTracks()
 
+    @Query("DELETE FROM tracks WHERE id = :id")
+    suspend fun deleteTrackById(id: Long)
+
     @Query("DELETE FROM tracks")
     suspend fun deleteAllTracks()
 }

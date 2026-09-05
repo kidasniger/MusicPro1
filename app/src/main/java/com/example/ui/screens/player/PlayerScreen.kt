@@ -161,6 +161,9 @@ fun PlayerScreen(
     val infoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var showOptionsMenu by remember { mutableStateOf(false) }
+    var localIsFavorite by remember(activeTrack.id, activeTrack.isFavorite) {
+        mutableStateOf(activeTrack.isFavorite)
+    }
 
     // Animation de rotation continue du vinyle quand la musique joue
     val infiniteTransition = rememberInfiniteTransition(label = "vinylRotation")
@@ -250,44 +253,59 @@ fun PlayerScreen(
                     )
                 }
 
-                Box {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
-                        onClick = { showOptionsMenu = true },
-                        modifier = Modifier.testTag("player_options_button")
+                        onClick = { showVariantDialog = true },
+                        modifier = Modifier.testTag("player_variant_top_button")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Options",
-                            tint = Color.White,
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Variantes du lecteur",
+                            tint = PurpleAccent,
                             modifier = Modifier.size(22.dp)
                         )
                     }
 
-                    DropdownMenu(
-                        expanded = showOptionsMenu,
-                        onDismissRequest = { showOptionsMenu = false },
-                        modifier = Modifier.background(SurfaceDark)
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    if (activeTrack.isFavorite) "Retirer des favoris" else "Ajouter aux favoris",
-                                    color = TextPrimary
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = if (activeTrack.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                    contentDescription = null,
-                                    tint = HeartPink,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            },
-                            onClick = {
-                                showOptionsMenu = false
-                                onToggleFavorite(activeTrack)
-                            }
-                        )
+                    Box {
+                        IconButton(
+                            onClick = { showOptionsMenu = true },
+                            modifier = Modifier.testTag("player_options_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Options",
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showOptionsMenu,
+                            onDismissRequest = { showOptionsMenu = false },
+                            modifier = Modifier.background(SurfaceDark)
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        if (localIsFavorite) "Retirer des favoris" else "Ajouter aux favoris",
+                                        color = TextPrimary
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = if (localIsFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = null,
+                                        tint = HeartPink,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    val newFav = !localIsFavorite
+                                    localIsFavorite = newFav
+                                    onToggleFavorite(activeTrack.copy(isFavorite = newFav))
+                                }
+                            )
 
                         DropdownMenuItem(
                             text = { Text("Voir les paroles", color = TextPrimary) },
@@ -392,6 +410,7 @@ fun PlayerScreen(
                     }
                 }
             }
+        }
 
             // Visuel central selon la variante sélectionnée
             Box(
@@ -518,13 +537,17 @@ fun PlayerScreen(
 
                     // Bouton Like / Favori
                     IconButton(
-                        onClick = { onToggleFavorite(activeTrack) },
+                        onClick = {
+                            val newFav = !localIsFavorite
+                            localIsFavorite = newFav
+                            onToggleFavorite(activeTrack.copy(isFavorite = newFav))
+                        },
                         modifier = Modifier.testTag("player_favorite_button")
                     ) {
                         Icon(
-                            imageVector = if (activeTrack.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            imageVector = if (localIsFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = "Favori",
-                            tint = if (activeTrack.isFavorite) HeartPink else Color.White.copy(alpha = 0.70f),
+                            tint = if (localIsFavorite) HeartPink else Color.White.copy(alpha = 0.70f),
                             modifier = Modifier.size(26.dp)
                         )
                     }

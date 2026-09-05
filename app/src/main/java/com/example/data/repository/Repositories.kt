@@ -80,24 +80,57 @@ class DefaultMusicRepository(
 
     override suspend fun syncLocalTracks(scannedTracks: List<TrackEntity>) {
         trackDao.deleteSimulatedTracks()
-        if (scannedTracks.isNotEmpty()) {
-            val existingTracks = trackDao.getAllTracksList().associateBy { it.path }
-            val merged = scannedTracks.map { scanned ->
-                val existing = existingTracks[scanned.path]
-                if (existing != null) {
-                    scanned.copy(
-                        id = existing.id,
-                        isFavorite = existing.isFavorite,
-                        dateAdded = existing.dateAdded,
-                        coverArtUri = scanned.coverArtUri ?: existing.coverArtUri,
-                        embeddedLyrics = scanned.embeddedLyrics ?: existing.embeddedLyrics
-                    )
-                } else {
-                    scanned
-                }
+        if (scannedTracks.isEmpty()) return
+
+        val allExisting = trackDao.getAllTracksList()
+        // Identifier les doublons existants dans la base pour les nettoyer
+        val existingByPath = HashMap<String, TrackEntity>()
+        val existingByKey = HashMap<String, TrackEntity>()
+        val duplicateIdsToDelete = mutableListOf<Long>()
+
+        for (t in allExisting) {
+            val key = "${t.title.trim().lowercase()}|${t.artist.trim().lowercase()}|${t.durationMs / 1000}"
+            if (existingByPath.containsKey(t.path) || existingByKey.containsKey(key)) {
+                duplicateIdsToDelete.add(t.id)
+            } else {
+                existingByPath[t.path] = t
+                existingByKey[key] = t
             }
-            trackDao.insertTracks(merged)
         }
+        for (dupId in duplicateIdsToDelete) {
+            trackDao.deleteTrackById(dupId)
+        }
+
+        // Dédupliquer la liste scannée
+        val seenScannedKeys = HashSet<String>()
+        val seenScannedPaths = HashSet<String>()
+        val uniqueScanned = mutableListOf<TrackEntity>()
+
+        for (scanned in scannedTracks) {
+            val key = "${scanned.title.trim().lowercase()}|${scanned.artist.trim().lowercase()}|${scanned.durationMs / 1000}"
+            if (!seenScannedPaths.contains(scanned.path) && !seenScannedKeys.contains(key)) {
+                seenScannedPaths.add(scanned.path)
+                seenScannedKeys.add(key)
+                uniqueScanned.add(scanned)
+            }
+        }
+
+        val merged = uniqueScanned.map { scanned ->
+            val key = "${scanned.title.trim().lowercase()}|${scanned.artist.trim().lowercase()}|${scanned.durationMs / 1000}"
+            val existing = existingByPath[scanned.path] ?: existingByKey[key]
+            if (existing != null) {
+                scanned.copy(
+                    id = existing.id,
+                    isFavorite = existing.isFavorite,
+                    dateAdded = existing.dateAdded,
+                    coverArtUri = scanned.coverArtUri ?: existing.coverArtUri,
+                    embeddedLyrics = scanned.embeddedLyrics ?: existing.embeddedLyrics
+                )
+            } else {
+                scanned
+            }
+        }
+        trackDao.insertTracks(merged)
     }
 
     override suspend fun toggleFavorite(trackId: Long, isFavorite: Boolean) {

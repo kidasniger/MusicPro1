@@ -22,6 +22,7 @@ class MediaStoreAudioScanner(private val context: Context) {
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
+            MediaStore.Audio.Media.ALBUM_ID,
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.SIZE,
             MediaStore.Audio.Media.DATA
@@ -41,6 +42,7 @@ class MediaStoreAudioScanner(private val context: Context) {
                 val titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
                 val artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
                 val albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+                val albumIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
                 val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
                 val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
                 val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
@@ -60,6 +62,7 @@ class MediaStoreAudioScanner(private val context: Context) {
                     val title = cursor.getString(titleColumn) ?: "Morceau inconnu"
                     val artist = cursor.getString(artistColumn) ?: "Artiste inconnu"
                     val album = cursor.getString(albumColumn) ?: "Album inconnu"
+                    val albumId = cursor.getLong(albumIdColumn)
                     val durationMs = cursor.getLong(durationColumn)
                     val sizeBytes = cursor.getLong(sizeColumn)
                     val dataPath = cursor.getString(dataColumn) ?: ""
@@ -77,7 +80,7 @@ class MediaStoreAudioScanner(private val context: Context) {
                         val ext = if (dataPath.contains('.')) dataPath.substringAfterLast('.').uppercase() else "MP3"
 
                         // Extraction des métadonnées intégrées (pochette et paroles du fichier audio)
-                        val extracted = AudioMetadataExtractor.extractMetadata(context, path, id)
+                        val extracted = AudioMetadataExtractor.extractMetadata(context, path, id, albumId)
 
                         tracks.add(
                             TrackEntity(

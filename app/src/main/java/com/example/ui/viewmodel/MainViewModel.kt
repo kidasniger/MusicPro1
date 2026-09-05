@@ -210,6 +210,15 @@ class MainViewModel(
         playerManager.setRepeatMode(mode)
     }
 
+    fun toggleRepeatOne() {
+        val newMode = if (playerManager.repeatMode.value == androidx.media3.common.Player.REPEAT_MODE_ONE) {
+            androidx.media3.common.Player.REPEAT_MODE_OFF
+        } else {
+            androidx.media3.common.Player.REPEAT_MODE_ONE
+        }
+        playerManager.setRepeatMode(newMode)
+    }
+
     fun toggleShuffle() {
         playerManager.toggleShuffle()
     }

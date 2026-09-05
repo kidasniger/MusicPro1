@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -380,6 +381,42 @@ fun NotificationPreviewScreen(
                                     else -> TextMuted
                                 },
                                 modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    // Paroles synchronisées dans la notification
+                    val uiState by viewModel.uiState.collectAsState()
+                    val activeLyricIndex = uiState.currentLyricIndex
+                    val activeLyricText = if (uiState.lyrics.isNotEmpty() && activeLyricIndex in uiState.lyrics.indices) {
+                        uiState.lyrics[activeLyricIndex].text
+                    } else displayTrack?.embeddedLyrics?.lineSequence()?.map { it.trim() }?.firstOrNull { it.isNotBlank() && !it.startsWith("[") }
+
+                    if (!activeLyricText.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.06f))
+                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = CyanAccent,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = activeLyricText,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
