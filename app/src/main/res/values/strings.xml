@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">MusicPro</string>
+    <string name="widget_compact_desc">MusicPro Compact : lecture/pause et pochette miniature</string>
+    <string name="widget_standard_desc">MusicPro Standard : titre, artiste, album et commandes complètes</string>
+    <string name="widget_lyrics_desc">MusicPro Paroles : affiche la ligne de chant en direct</string>
+</resources>

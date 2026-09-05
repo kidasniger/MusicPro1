@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Gradient squircle container -->
+    <path android:pathData="M38,24h32c8.8,0 16,7.2 16,16v32c0,8.8 -7.2,16 -16,16h-32c-8.8,0 -16,-7.2 -16,-16v-32c0,-8.8 7.2,-16 16,-16z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="22"
+                android:startY="24"
+                android:endX="86"
+                android:endY="88"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#22D3EE" />
+                <item android:offset="1.0" android:color="#A855F7" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Inner dark squircle -->
+    <path
+        android:pathData="M39.5,26.5h29c7.5,0 13.5,6 13.5,13.5v29c0,7.5 -6,13.5 -13.5,13.5h-29c-7.5,0 -13.5,-6 -13.5,-13.5v-29c0,-7.5 6,-13.5 13.5,-13.5z"
+        android:fillColor="#150B29" />
+
+    <!-- Bold letter M -->
+    <path
+        android:pathData="M36,70V44h5l9,14 9,-14h5v26h-5.5V52.5L50.5,65h-2L39.5,52.5V70H36z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Signature cyan dot above M -->
+    <path
+        android:pathData="M65.5,41.5a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0"
+        android:fillColor="#22D3EE" />
+
+    <!-- Music note accent -->
+    <path
+        android:pathData="M69,63v-9c0,-0.6 0.4,-1 1,-1h4v2.5h-3v7.5a2.5,2.5 0 1,1 -2,-2.5z"
+        android:fillColor="#A855F7" />
+</vector>

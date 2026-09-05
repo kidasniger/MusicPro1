@@ -1,0 +1,6 @@
+{
+  "name": "MusicPro",
+  "description": "Lecteur audio local haute fidélité avec paroles synchronisées, intégration LRCLIB et IA Groq Whisper",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
