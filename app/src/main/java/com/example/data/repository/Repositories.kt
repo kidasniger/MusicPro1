@@ -81,7 +81,22 @@ class DefaultMusicRepository(
     override suspend fun syncLocalTracks(scannedTracks: List<TrackEntity>) {
         trackDao.deleteSimulatedTracks()
         if (scannedTracks.isNotEmpty()) {
-            trackDao.insertTracks(scannedTracks)
+            val existingTracks = trackDao.getAllTracksList().associateBy { it.path }
+            val merged = scannedTracks.map { scanned ->
+                val existing = existingTracks[scanned.path]
+                if (existing != null) {
+                    scanned.copy(
+                        id = existing.id,
+                        isFavorite = existing.isFavorite,
+                        dateAdded = existing.dateAdded,
+                        coverArtUri = scanned.coverArtUri ?: existing.coverArtUri,
+                        embeddedLyrics = scanned.embeddedLyrics ?: existing.embeddedLyrics
+                    )
+                } else {
+                    scanned
+                }
+            }
+            trackDao.insertTracks(merged)
         }
     }
 
@@ -165,14 +180,38 @@ class DefaultLyricsRepository(
         albumName: String?,
         durationSeconds: Int?
     ): Result<LrclibResponse> = withContext(Dispatchers.IO) {
+        // Nettoyage préalable du titre pour optimiser la recherche LRCLIB
+        val cleanTrack = trackName
+            .replace(Regex("(?i)\\.(mp3|flac|m4a|wav|aac|ogg)$"), "")
+            .replace(Regex("(?i)\\[(official|lyrics|audio|video|clip|hd|4k)[^\\]]*\\]"), "")
+            .replace(Regex("(?i)\\((official|lyrics|audio|video|clip|hd|4k)[^\\)]*\\)"), "")
+            .trim()
+        val cleanArtist = if (artistName == "Artiste inconnu" || artistName.startsWith("<")) "" else artistName.trim()
+
         try {
             val response = lrclibApi.getLyrics(
-                trackName = trackName,
-                artistName = artistName,
+                trackName = cleanTrack,
+                artistName = cleanArtist,
                 albumName = albumName,
                 durationSeconds = durationSeconds
             )
-            Result.success(response)
+            if (!response.syncedLyrics.isNullOrBlank() || !response.plainLyrics.isNullOrBlank()) {
+                return@withContext Result.success(response)
+            }
+        } catch (e: Exception) {
+            // Si la correspondance exacte échoue (ex. 404), on tente la recherche textuelle
+        }
+
+        try {
+            val searchQuery = if (cleanArtist.isNotBlank()) "$cleanTrack $cleanArtist" else cleanTrack
+            val searchResults = lrclibApi.searchLyrics(searchQuery)
+            val matched = searchResults.firstOrNull { !it.syncedLyrics.isNullOrBlank() }
+                ?: searchResults.firstOrNull { !it.plainLyrics.isNullOrBlank() }
+            if (matched != null) {
+                Result.success(matched)
+            } else {
+                Result.failure(Exception("Aucune parole trouvée"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -55,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.components.TrackCoverArt
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderSubtle
@@ -181,6 +182,7 @@ fun WidgetsGalleryScreen(
             0 -> CompactWidgetSection(
                 title = title,
                 artist = artist,
+                coverGradient = activeTrack?.coverGradient,
                 isPlaying = isPlaying,
                 onTogglePlay = { viewModel.togglePlayPause() }
             )
@@ -188,6 +190,7 @@ fun WidgetsGalleryScreen(
                 title = title,
                 artist = artist,
                 album = album,
+                coverGradient = activeTrack?.coverGradient,
                 isPlaying = isPlaying,
                 currentPositionMs = currentPositionMs,
                 durationMs = durationMs,
@@ -198,9 +201,12 @@ fun WidgetsGalleryScreen(
             2 -> LyricsWidgetSection(
                 title = title,
                 artist = artist,
+                coverGradient = activeTrack?.coverGradient,
                 lyric = currentLyric,
                 isPlaying = isPlaying,
-                onTogglePlay = { viewModel.togglePlayPause() }
+                onTogglePlay = { viewModel.togglePlayPause() },
+                onNext = { viewModel.next() },
+                onPrev = { viewModel.previous() }
             )
         }
 
@@ -247,6 +253,7 @@ fun WidgetsGalleryScreen(
 private fun CompactWidgetSection(
     title: String,
     artist: String,
+    coverGradient: String? = null,
     isPlaying: Boolean,
     onTogglePlay: () -> Unit
 ) {
@@ -290,14 +297,11 @@ private fun CompactWidgetSection(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Brush.linearGradient(listOf(Color(0xFF1F1235), Color(0xFF110D20)))),
-                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = null,
-                        tint = CyanAccent,
-                        modifier = Modifier.size(24.dp)
+                    TrackCoverArt(
+                        gradientStr = coverGradient,
+                        title = title,
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
 
@@ -351,6 +355,7 @@ private fun StandardWidgetSection(
     title: String,
     artist: String,
     album: String,
+    coverGradient: String? = null,
     isPlaying: Boolean,
     currentPositionMs: Long,
     durationMs: Long,
@@ -402,14 +407,11 @@ private fun StandardWidgetSection(
                         modifier = Modifier
                             .size(64.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Brush.linearGradient(listOf(Color(0xFF2A1B4E), Color(0xFF140D25)))),
-                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.MusicNote,
-                            contentDescription = null,
-                            tint = CyanAccent,
-                            modifier = Modifier.size(32.dp)
+                        TrackCoverArt(
+                            gradientStr = coverGradient,
+                            title = title,
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
@@ -531,9 +533,12 @@ private fun StandardWidgetSection(
 private fun LyricsWidgetSection(
     title: String,
     artist: String,
+    coverGradient: String? = null,
     lyric: String,
     isPlaying: Boolean,
-    onTogglePlay: () -> Unit
+    onTogglePlay: () -> Unit,
+    onNext: () -> Unit = {},
+    onPrev: () -> Unit = {}
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Text(
@@ -574,52 +579,70 @@ private fun LyricsWidgetSection(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(PurpleDeep),
-                        contentAlignment = Alignment.Center
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(10.dp))
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Mic,
-                            contentDescription = null,
-                            tint = PurpleAccent,
-                            modifier = Modifier.size(18.dp)
+                        TrackCoverArt(
+                            gradientStr = coverGradient,
+                            title = title,
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = title,
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary,
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "$artist • Paroles en direct",
                             fontSize = 11.sp,
-                            color = TextSecondary,
-                            maxLines = 1
+                            color = CyanAccent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(if (isPlaying) CyanAccent else PurpleAccent)
-                            .clickable { onTogglePlay() }
-                            .testTag("wlyrics_play_btn"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Lecture",
-                            tint = if (isPlaying) Color.Black else Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    // Contrôles média
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onPrev, modifier = Modifier.size(32.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.SkipPrevious,
+                                contentDescription = "Précédent",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(if (isPlaying) CyanAccent else PurpleAccent)
+                                .clickable { onTogglePlay() }
+                                .testTag("wlyrics_play_btn"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (isPlaying) "Pause" else "Lecture",
+                                tint = if (isPlaying) Color.Black else Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        IconButton(onClick = onNext, modifier = Modifier.size(32.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.SkipNext,
+                                contentDescription = "Suivant",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
 
@@ -631,7 +654,7 @@ private fun LyricsWidgetSection(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFF1F1436))
-                        .border(1.dp, PurpleAccent.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                        .border(1.dp, PurpleAccent.copy(alpha = 0.20f), RoundedCornerShape(12.dp))
                         .padding(14.dp),
                     contentAlignment = Alignment.Center
                 ) {

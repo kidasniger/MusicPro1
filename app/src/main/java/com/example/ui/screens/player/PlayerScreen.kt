@@ -30,6 +30,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Mic
@@ -37,12 +39,15 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -103,6 +108,9 @@ fun PlayerScreen(
     currentPositionMs: Long,
     durationMs: Long,
     queue: List<TrackEntity>,
+    repeatMode: Int = 0,
+    isShuffleEnabled: Boolean = false,
+    playerVisualVariant: String = "VINYL",
     sleepRemainingSeconds: Long? = null,
     isEndOfTrackSleepActive: Boolean = false,
     onTogglePlayPause: () -> Unit,
@@ -110,6 +118,10 @@ fun PlayerScreen(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onToggleFavorite: (TrackEntity) -> Unit,
+    onCycleRepeatMode: () -> Unit = {},
+    onToggleRepeatOne: () -> Unit = {},
+    onToggleShuffle: () -> Unit = {},
+    onSetPlayerVisualVariant: (String) -> Unit = {},
     onTrackFromQueueSelected: (TrackEntity) -> Unit,
     onMoveQueueItem: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
     onRemoveQueueItem: (index: Int) -> Unit = {},
@@ -141,14 +153,13 @@ fun PlayerScreen(
     var isSleepTimerSheetVisible by remember { mutableStateOf(false) }
     var isEqualizerSheetVisible by remember { mutableStateOf(false) }
     var isTrackInfoSheetVisible by remember { mutableStateOf(false) }
+    var showVariantDialog by remember { mutableStateOf(false) }
 
     val queueSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sleepSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val eqSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val infoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    var isRepeatEnabled by remember { mutableStateOf(false) }
-    var isShuffleEnabled by remember { mutableStateOf(false) }
     var showOptionsMenu by remember { mutableStateOf(false) }
 
     // Animation de rotation continue du vinyle quand la musique joue
@@ -311,6 +322,27 @@ fun PlayerScreen(
                         )
 
                         DropdownMenuItem(
+                            text = {
+                                Text(
+                                    if (repeatMode == 1) "Boucle 1 morceau (Actif)" else "Lecture d'un seul morceau",
+                                    color = if (repeatMode == 1) PurpleAccent else TextPrimary
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.RepeatOne,
+                                    contentDescription = null,
+                                    tint = if (repeatMode == 1) PurpleAccent else CyanAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showOptionsMenu = false
+                                onToggleRepeatOne()
+                            }
+                        )
+
+                        DropdownMenuItem(
                             text = { Text("Variantes du lecteur", color = TextPrimary) },
                             leadingIcon = {
                                 Icon(
@@ -322,7 +354,7 @@ fun PlayerScreen(
                             },
                             onClick = {
                                 showOptionsMenu = false
-                                onNavigateToVariants()
+                                showVariantDialog = true
                             }
                         )
 
@@ -361,31 +393,98 @@ fun PlayerScreen(
                 }
             }
 
-            // Pochette Vinyl centrale en rotation (player + playerVar)
+            // Visuel central selon la variante sélectionnée
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(270.dp)
-                        .shadow(
-                            elevation = 48.dp,
-                            shape = CircleShape,
-                            spotColor = PurpleAccent.copy(alpha = 0.50f),
-                            ambientColor = CyanAccent.copy(alpha = 0.30f)
-                        )
-                        .clip(CircleShape)
-                        .rotate(if (isPlaying) vinylRotation else 0f)
-                ) {
-                    TrackCoverArt(
-                        gradientStr = activeTrack.coverGradient,
-                        title = activeTrack.title,
-                        size = 270.dp,
-                        isVinyl = true
-                    )
+                when (playerVisualVariant) {
+                    "WAVEFORM" -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.92f)
+                                    .height(180.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(SurfaceCard)
+                                    .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                                    .padding(horizontal = 14.dp, vertical = 20.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val barCount = 28
+                                for (i in 0 until barCount) {
+                                    val factor = (Math.sin((i + currentPositionMs / 200.0) * 0.4) + 1.2).toFloat()
+                                    val barHeight = if (isPlaying) (28 * factor).coerceIn(12f, 130f) else 16f
+                                    Box(
+                                        modifier = Modifier
+                                            .width(5.dp)
+                                            .height(barHeight.dp)
+                                            .clip(RoundedCornerShape(3.dp))
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    listOf(CyanAccent, PurpleAccent)
+                                                )
+                                            )
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Text(
+                                text = "ANALYSE SPECTRALE EN TEMPS RÉEL (44.1 kHz)",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CyanAccent,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    }
+                    "COVER_ART" -> {
+                        Box(
+                            modifier = Modifier
+                                .size(260.dp)
+                                .shadow(
+                                    elevation = 32.dp,
+                                    shape = RoundedCornerShape(24.dp),
+                                    spotColor = CyanAccent.copy(alpha = 0.35f)
+                                )
+                                .clip(RoundedCornerShape(24.dp))
+                                .border(1.dp, BorderSubtle, RoundedCornerShape(24.dp))
+                        ) {
+                            TrackCoverArt(
+                                gradientStr = activeTrack.coverGradient,
+                                title = activeTrack.title,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                    else -> {
+                        // VINYL 33T
+                        Box(
+                            modifier = Modifier
+                                .size(270.dp)
+                                .shadow(
+                                    elevation = 48.dp,
+                                    shape = CircleShape,
+                                    spotColor = PurpleAccent.copy(alpha = 0.50f),
+                                    ambientColor = CyanAccent.copy(alpha = 0.30f)
+                                )
+                                .clip(CircleShape)
+                                .rotate(if (isPlaying) vinylRotation else 0f)
+                        ) {
+                            TrackCoverArt(
+                                gradientStr = activeTrack.coverGradient,
+                                title = activeTrack.title,
+                                size = 270.dp,
+                                isVinyl = true
+                            )
+                        }
+                    }
                 }
             }
 
@@ -517,7 +616,7 @@ fun PlayerScreen(
             ) {
                 // Shuffle
                 IconButton(
-                    onClick = { isShuffleEnabled = !isShuffleEnabled },
+                    onClick = onToggleShuffle,
                     modifier = Modifier.testTag("player_shuffle_button")
                 ) {
                     Icon(
@@ -587,15 +686,65 @@ fun PlayerScreen(
 
                 // Repeat
                 IconButton(
-                    onClick = { isRepeatEnabled = !isRepeatEnabled },
+                    onClick = onCycleRepeatMode,
                     modifier = Modifier.testTag("player_repeat_button")
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Repeat,
-                        contentDescription = "Répéter",
-                        tint = if (isRepeatEnabled) PurpleAccent else Color.White.copy(alpha = 0.60f),
-                        modifier = Modifier.size(22.dp)
+                        imageVector = if (repeatMode == 1) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                        contentDescription = when (repeatMode) {
+                            1 -> "Répéter un seul morceau"
+                            2 -> "Tout répéter"
+                            else -> "Répétition désactivée"
+                        },
+                        tint = when (repeatMode) {
+                            1 -> PurpleAccent
+                            2 -> CyanAccent
+                            else -> Color.White.copy(alpha = 0.60f)
+                        },
+                        modifier = Modifier.size(24.dp)
                     )
+                }
+            }
+
+            // Bouton explicite "Lecture d'un seul morceau" (Loop 1 track)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            if (repeatMode == 1) PurpleAccent.copy(alpha = 0.22f)
+                            else Color.White.copy(alpha = 0.06f)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (repeatMode == 1) PurpleAccent else BorderSubtle,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .clickable { onToggleRepeatOne() }
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                        .testTag("player_single_track_loop_button")
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.RepeatOne,
+                            contentDescription = "Lecture d'un seul morceau",
+                            tint = if (repeatMode == 1) PurpleAccent else TextMuted,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (repeatMode == 1) "Lecture d'un seul morceau : ACTIVÉE" else "Lecture d'un seul morceau",
+                            fontSize = 11.sp,
+                            fontWeight = if (repeatMode == 1) FontWeight.Bold else FontWeight.Medium,
+                            color = if (repeatMode == 1) PurpleAccent else TextSecondary
+                        )
+                    }
                 }
             }
 
@@ -751,6 +900,69 @@ fun PlayerScreen(
                 track = activeTrack,
                 sheetState = infoSheetState,
                 onDismiss = { isTrackInfoSheetVisible = false }
+            )
+        }
+
+        // 5. Dialogue de choix de la variante visuelle du lecteur
+        if (showVariantDialog) {
+            AlertDialog(
+                onDismissRequest = { showVariantDialog = false },
+                title = {
+                    Text(
+                        text = "Variante d'affichage du lecteur",
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        listOf(
+                            Triple("VINYL", "Vinyle 33T en rotation", Icons.Default.Radio),
+                            Triple("WAVEFORM", "Spectre audio Waveform", Icons.Default.GraphicEq),
+                            Triple("COVER_ART", "Pochette d'album pure", Icons.Default.Image)
+                        ).forEach { (variantKey, label, icon) ->
+                            val isCurrent = playerVisualVariant == variantKey
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isCurrent) CyanAccent.copy(alpha = 0.18f) else SurfaceCard)
+                                    .border(1.dp, if (isCurrent) CyanAccent else BorderSubtle, RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        onSetPlayerVisualVariant(variantKey)
+                                        showVariantDialog = false
+                                    }
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = if (isCurrent) CyanAccent else TextMuted,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = label,
+                                    color = if (isCurrent) CyanAccent else TextPrimary,
+                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Text(
+                        text = "Fermer",
+                        color = CyanAccent,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .clickable { showVariantDialog = false }
+                            .padding(8.dp)
+                    )
+                },
+                containerColor = SurfaceDark
             )
         }
     }

@@ -30,10 +30,12 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -45,6 +47,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -84,6 +89,11 @@ fun LockScreenPreview(
     val isPlaying by viewModel.isPlaying.collectAsState()
     val currentPositionMs by viewModel.currentPositionMs.collectAsState()
     val durationMs by viewModel.durationMs.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val repeatMode by viewModel.repeatMode.collectAsState()
+    val isShuffleEnabled by viewModel.isShuffleEnabled.collectAsState()
+
+    var showLyricsOnLock by remember { mutableStateOf(true) }
 
     val displayTrack = activeTrack ?: viewModel.allTracks.collectAsState().value.firstOrNull()
 
@@ -269,6 +279,95 @@ fun LockScreenPreview(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
+                    // Visualisation des Paroles synchronisées sur l'écran verrouillé
+                    if (showLyricsOnLock) {
+                        val activeLyricIndex = uiState.currentLyricIndex
+                        val activeLineText = if (uiState.lyrics.isNotEmpty() && activeLyricIndex in uiState.lyrics.indices) {
+                            uiState.lyrics[activeLyricIndex].text
+                        } else null
+
+                        val nextLineText = if (uiState.lyrics.isNotEmpty() && activeLyricIndex + 1 in uiState.lyrics.indices) {
+                            uiState.lyrics[activeLyricIndex + 1].text
+                        } else null
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color.Black.copy(alpha = 0.35f))
+                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Mic,
+                                            contentDescription = null,
+                                            tint = CyanAccent,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "PAROLES EN DIRECT",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CyanAccent,
+                                            letterSpacing = 1.sp
+                                        )
+                                    }
+                                    Text(
+                                        text = if (uiState.lyrics.isNotEmpty()) "Sync" else "Recherche...",
+                                        fontSize = 9.sp,
+                                        color = TextMuted
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                if (activeLineText != null && activeLineText.isNotBlank()) {
+                                    Text(
+                                        text = activeLineText,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (nextLineText != null && nextLineText.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = nextLineText,
+                                            fontSize = 12.sp,
+                                            color = Color.White.copy(alpha = 0.45f),
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = if (uiState.lyrics.isEmpty()) "♫ Paroles en cours de synchronisation..." else "♫ Instrumental...",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
                     // Slider de scrubbing
                     Slider(
                         value = progress,
@@ -309,11 +408,14 @@ fun LockScreenPreview(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = {}) {
+                        IconButton(
+                            onClick = { viewModel.toggleShuffle() },
+                            modifier = Modifier.testTag("lock_shuffle_button")
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Shuffle,
                                 contentDescription = "Aléatoire",
-                                tint = Color.White.copy(alpha = 0.6f),
+                                tint = if (isShuffleEnabled) CyanAccent else Color.White.copy(alpha = 0.6f),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -360,12 +462,19 @@ fun LockScreenPreview(
                             )
                         }
 
-                        IconButton(onClick = {}) {
+                        IconButton(
+                            onClick = { viewModel.cycleRepeatMode() },
+                            modifier = Modifier.testTag("lock_repeat_button")
+                        ) {
                             Icon(
-                                imageVector = Icons.Default.Repeat,
+                                imageVector = if (repeatMode == 1) Icons.Default.RepeatOne else Icons.Default.Repeat,
                                 contentDescription = "Répéter",
-                                tint = Color.White.copy(alpha = 0.6f),
-                                modifier = Modifier.size(20.dp)
+                                tint = when (repeatMode) {
+                                    1 -> PurpleAccent
+                                    2 -> CyanAccent
+                                    else -> Color.White.copy(alpha = 0.6f)
+                                },
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }

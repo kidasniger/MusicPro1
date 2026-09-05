@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -77,6 +78,8 @@ fun NotificationPreviewScreen(
     val isPlaying by viewModel.isPlaying.collectAsState()
     val currentPositionMs by viewModel.currentPositionMs.collectAsState()
     val durationMs by viewModel.durationMs.collectAsState()
+    val repeatMode by viewModel.repeatMode.collectAsState()
+    val isShuffleEnabled by viewModel.isShuffleEnabled.collectAsState()
 
     val displayTrack = activeTrack ?: viewModel.allTracks.collectAsState().value.firstOrNull()
 
@@ -308,11 +311,14 @@ fun NotificationPreviewScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { /* Shuffle */ }) {
+                        IconButton(
+                            onClick = { viewModel.toggleShuffle() },
+                            modifier = Modifier.testTag("notif_shuffle_button")
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Shuffle,
                                 contentDescription = "Aléatoire",
-                                tint = TextMuted,
+                                tint = if (isShuffleEnabled) CyanAccent else TextMuted,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -361,11 +367,18 @@ fun NotificationPreviewScreen(
                             )
                         }
 
-                        IconButton(onClick = { /* Repeat */ }) {
+                        IconButton(
+                            onClick = { viewModel.cycleRepeatMode() },
+                            modifier = Modifier.testTag("notif_repeat_button")
+                        ) {
                             Icon(
-                                imageVector = Icons.Default.Repeat,
+                                imageVector = if (repeatMode == 1) Icons.Default.RepeatOne else Icons.Default.Repeat,
                                 contentDescription = "Répéter",
-                                tint = TextMuted,
+                                tint = when (repeatMode) {
+                                    1 -> PurpleAccent
+                                    2 -> CyanAccent
+                                    else -> TextMuted
+                                },
                                 modifier = Modifier.size(20.dp)
                             )
                         }

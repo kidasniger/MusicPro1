@@ -76,6 +76,9 @@ class MediaStoreAudioScanner(private val context: Context) {
                         val sizeFormatted = String.format("%.1f MB", sizeBytes.toDouble() / (1024 * 1024))
                         val ext = if (dataPath.contains('.')) dataPath.substringAfterLast('.').uppercase() else "MP3"
 
+                        // Extraction des métadonnées intégrées (pochette et paroles du fichier audio)
+                        val extracted = AudioMetadataExtractor.extractMetadata(context, path, id)
+
                         tracks.add(
                             TrackEntity(
                                 title = title,
@@ -87,7 +90,9 @@ class MediaStoreAudioScanner(private val context: Context) {
                                 format = ext,
                                 size = sizeFormatted,
                                 path = path,
-                                coverGradient = gradientOptions[gradIdx % gradientOptions.size]
+                                coverGradient = gradientOptions[gradIdx % gradientOptions.size],
+                                coverArtUri = extracted.coverArtUri,
+                                embeddedLyrics = extracted.embeddedLyrics
                             )
                         )
                         gradIdx++

@@ -1,9 +1,13 @@
 package com.example.data.local.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "tracks")
+@Entity(
+    tableName = "tracks",
+    indices = [Index(value = ["path"], unique = true)]
+)
 data class TrackEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -18,6 +22,8 @@ data class TrackEntity(
     val size: String = "",
     val year: Int = 2024,
     val coverGradient: String = "from-[#22D3EE] to-[#A855F7]",
+    val coverArtUri: String? = null,
+    val embeddedLyrics: String? = null,
     val isFavorite: Boolean = false,
     val dateAdded: Long = System.currentTimeMillis()
 )

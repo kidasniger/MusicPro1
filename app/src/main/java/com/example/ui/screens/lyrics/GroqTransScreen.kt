@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -79,8 +80,10 @@ fun GroqTransScreen(
     val groqApiKey by viewModel.groqApiKey.collectAsState()
     val groqModel by viewModel.groqModel.collectAsState()
 
+    val context = LocalContext.current
     var isProcessing by remember { mutableStateOf(false) }
     var currentProgressText by remember { mutableStateOf("Prêt pour la transcription") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     var transcriptionFinished by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -295,6 +298,36 @@ fun GroqTransScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                     CircularProgressIndicator(color = AmberAccent, modifier = Modifier.size(28.dp))
                 }
+
+                errorMessage?.let { err ->
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF33151A))
+                            .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                            .padding(12.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = err,
+                                fontSize = 12.sp,
+                                color = Color(0xFFFCA5A5)
+                            )
+                            if (groqApiKey.isBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "👉 Ouvrir les paramètres pour renseigner la clé",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AmberAccent,
+                                    modifier = Modifier.clickable { onOpenGroqConfig() }
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             // Bouton Lancer la transcription
@@ -312,35 +345,34 @@ fun GroqTransScreen(
                         }
                     )
                     .clickable(enabled = !isProcessing) {
-                        isProcessing = true
-                        scope.launch {
-                            currentProgressText = "Lecture du buffer audio..."
-                            delay(600)
-                            currentProgressText = "Envoi à Groq Whisper API..."
-                            delay(1000)
-                            currentProgressText = "Génération des timestamps synchronisés..."
-                            delay(600)
-
-                            // Paroles générées par Groq AI
-                            val transcribedLyrics = listOf(
-                                LyricLine("00:00", 0L, "Yeah, c'est parti pour le morceau"),
-                                LyricLine("00:04", 4000L, "J'entends la mélodie qui s'élève"),
-                                LyricLine("00:09", 9000L, "Sous les néons vibrants de la ville"),
-                                LyricLine("00:15", 15000L, "Le rythme s'accélère à chaque mesure"),
-                                LyricLine("00:22", 22000L, "Et la voix résonne dans la nuit"),
-                                LyricLine("00:28", 28000L, "Comme un écho sans fin")
-                            )
-
-                            viewModel.setCustomLyrics(
-                                lyrics = transcribedLyrics,
-                                sourceName = "Groq Whisper • Transcription IA"
-                            )
-
-                            isProcessing = false
-                            transcriptionFinished = true
-                            delay(400)
-                            onTranscriptionComplete()
+                        val track = activeTrack
+                        if (track == null) {
+                            errorMessage = "Aucun morceau sélectionné."
+                            return@clickable
                         }
+                        if (groqApiKey.isBlank()) {
+                            errorMessage = "Clé API Groq non configurée. Rendez-vous dans les Paramètres pour entrer votre clé API Groq."
+                            return@clickable
+                        }
+
+                        errorMessage = null
+                        isProcessing = true
+                        viewModel.transcribeTrackWithGroq(
+                            track = track,
+                            context = context,
+                            onStatusUpdate = { status ->
+                                currentProgressText = status
+                            },
+                            onSuccess = {
+                                isProcessing = false
+                                transcriptionFinished = true
+                                onTranscriptionComplete()
+                            },
+                            onError = { err ->
+                                isProcessing = false
+                                errorMessage = err
+                            }
+                        )
                     }
                     .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center

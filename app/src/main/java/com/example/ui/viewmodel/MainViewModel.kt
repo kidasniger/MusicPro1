@@ -13,7 +13,11 @@ import com.example.data.repository.LyricsRepository
 import com.example.data.repository.MusicRepository
 import com.example.player.MusicPlayerManager
 import com.example.util.NetworkMonitor
+import android.content.Context
+import android.net.Uri
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -153,6 +157,28 @@ class MainViewModel(
     val connectedDeviceName: StateFlow<String?> = playerManager.connectedDeviceName
     val lastBluetoothEvent: StateFlow<String?> = playerManager.lastBluetoothEvent
 
+    val repeatMode: StateFlow<Int> = playerManager.repeatMode
+    val isShuffleEnabled: StateFlow<Boolean> = playerManager.isShuffleEnabled
+
+    val audioEffectsManager get() = playerManager.audioEffectsManager
+    private val _isEqEnabled = MutableStateFlow(true)
+    val isEqEnabled: StateFlow<Boolean> = _isEqEnabled.asStateFlow()
+
+    private val _eqPreset = MutableStateFlow("Bass Boost")
+    val eqPreset: StateFlow<String> = _eqPreset.asStateFlow()
+
+    private val _bandLevels = MutableStateFlow(listOf(5f, 3f, 0f, 2f, 4f))
+    val bandLevels: StateFlow<List<Float>> = _bandLevels.asStateFlow()
+
+    private val _bassBoostLevel = MutableStateFlow(65f)
+    val bassBoostLevel: StateFlow<Float> = _bassBoostLevel.asStateFlow()
+
+    private val _virtualizerLevel = MutableStateFlow(40f)
+    val virtualizerLevel: StateFlow<Float> = _virtualizerLevel.asStateFlow()
+
+    private val _playerVisualVariant = MutableStateFlow("VINYL")
+    val playerVisualVariant: StateFlow<String> = _playerVisualVariant.asStateFlow()
+
     private val _isOffline = MutableStateFlow(false)
     val isOffline: StateFlow<Boolean> = _isOffline.asStateFlow()
 
@@ -163,6 +189,68 @@ class MainViewModel(
         scanLocalMusic()
         observePlaybackForLyrics()
         observeNetworkState()
+        observeCrossfade()
+    }
+
+    private fun observeCrossfade() {
+        viewModelScope.launch {
+            userPreferencesRepository.crossfadeSeconds.collect { sec ->
+                playerManager.setCrossfadeSeconds(sec)
+            }
+        }
+    }
+
+    fun setPlayerVisualVariant(variant: String) {
+        _playerVisualVariant.value = variant
+    }
+
+    fun cycleRepeatMode(): Int = playerManager.cycleRepeatMode()
+
+    fun setRepeatMode(mode: Int) {
+        playerManager.setRepeatMode(mode)
+    }
+
+    fun toggleShuffle() {
+        playerManager.toggleShuffle()
+    }
+
+    fun setEqEnabled(enabled: Boolean) {
+        _isEqEnabled.value = enabled
+        audioEffectsManager.setEnabled(enabled)
+    }
+
+    fun setBandLevel(bandIndex: Int, levelDb: Float) {
+        val current = _bandLevels.value.toMutableList()
+        if (bandIndex in current.indices) {
+            current[bandIndex] = levelDb
+            _bandLevels.value = current
+            audioEffectsManager.setBandLevel(bandIndex.toShort(), (levelDb * 100).toInt().toShort())
+        }
+    }
+
+    fun setBassBoost(levelPercent: Float) {
+        _bassBoostLevel.value = levelPercent
+        audioEffectsManager.setBassBoost(levelPercent)
+    }
+
+    fun setVirtualizer(levelPercent: Float) {
+        _virtualizerLevel.value = levelPercent
+        audioEffectsManager.setVirtualizer(levelPercent)
+    }
+
+    fun applyEqPreset(presetName: String, levels: List<Float>) {
+        _eqPreset.value = presetName
+        _bandLevels.value = levels
+        audioEffectsManager.applyPreset(presetName)
+        levels.forEachIndexed { idx, db ->
+            audioEffectsManager.setBandLevel(idx.toShort(), (db * 100).toInt().toShort())
+        }
+    }
+
+    fun resetEqualizer() {
+        applyEqPreset("Plat", listOf(0f, 0f, 0f, 0f, 0f))
+        setBassBoost(0f)
+        setVirtualizer(0f)
     }
 
     private fun observeNetworkState() {
@@ -250,8 +338,10 @@ class MainViewModel(
     }
 
     fun toggleFavorite(track: TrackEntity) {
+        val newFav = !track.isFavorite
+        playerManager.updateActiveTrackFavorite(newFav)
         viewModelScope.launch {
-            musicRepository.toggleFavorite(track.id, !track.isFavorite)
+            musicRepository.toggleFavorite(track.id, newFav)
         }
     }
 
@@ -368,6 +458,27 @@ class MainViewModel(
     // Gestion des Paroles (LRCLIB, Groq, Décalage, Traduction)
     fun loadLyricsForTrack(track: TrackEntity) {
         viewModelScope.launch {
+            if (!track.embeddedLyrics.isNullOrBlank()) {
+                val parsed = if (track.embeddedLyrics.contains(Regex("\\[\\d{2}:\\d{2}"))) {
+                    LrcParser.parse(track.embeddedLyrics)
+                } else {
+                    track.embeddedLyrics.lines().filter { it.isNotBlank() }.mapIndexed { idx, line ->
+                        LyricLine(
+                            timeFormatted = "--:--",
+                            timeMs = idx * 4000L,
+                            text = line.trim()
+                        )
+                    }
+                }
+                _uiState.value = _uiState.value.copy(
+                    lyrics = parsed,
+                    lyricsSource = "Fichier audio • Paroles intégrées",
+                    isLyricsLoading = false,
+                    lyricsError = null
+                )
+                return@launch
+            }
+
             if (_isOffline.value) {
                 _uiState.value = _uiState.value.copy(
                     lyrics = emptyList(),
@@ -531,6 +642,7 @@ class MainViewModel(
 
     fun transcribeTrackWithGroq(
         track: TrackEntity,
+        context: Context? = null,
         onStatusUpdate: (String) -> Unit,
         onSuccess: (List<LyricLine>) -> Unit,
         onError: (String) -> Unit
@@ -545,9 +657,29 @@ class MainViewModel(
                 onError("Aucun fichier audio physique associé au morceau '${track.title}'.")
                 return@launch
             }
-            val audioFile = File(track.path)
-            if (!audioFile.exists()) {
-                onError("Fichier audio introuvable sur le stockage de l'appareil (${track.path}).")
+
+            onStatusUpdate("Préparation de l'échantillon audio...")
+            val audioFile = withContext(Dispatchers.IO) {
+                try {
+                    if (track.path.startsWith("content://") && context != null) {
+                        val tempFile = File(context.cacheDir, "groq_temp_${track.id}.mp3")
+                        context.contentResolver.openInputStream(Uri.parse(track.path))?.use { input ->
+                            tempFile.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                        if (tempFile.exists() && tempFile.length() > 0) tempFile else null
+                    } else {
+                        val f = File(track.path)
+                        if (f.exists()) f else null
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            if (audioFile == null || !audioFile.exists()) {
+                onError("Impossible d'accéder au fichier audio pour la transcription (${track.title}).")
                 return@launch
             }
 

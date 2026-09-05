@@ -22,7 +22,7 @@ import com.example.data.local.entities.TrackEntity
         FavoriteEntity::class,
         HistoryEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class MusicDatabase : RoomDatabase() {

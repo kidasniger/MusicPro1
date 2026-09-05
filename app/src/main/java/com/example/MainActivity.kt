@@ -93,7 +93,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MusicProTheme {
+            val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            MusicProTheme(themeMode = themeMode) {
                 MusicProApp(viewModel = viewModel)
             }
         }
@@ -128,7 +129,7 @@ fun MusicProApp(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = BackgroundDark,
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (currentRoute in bottomBarScreens) {
                 MusicProBottomBar(
@@ -253,6 +254,9 @@ fun MusicProApp(
                 val currentPositionMs by viewModel.currentPositionMs.collectAsStateWithLifecycle()
                 val durationMs by viewModel.durationMs.collectAsStateWithLifecycle()
                 val queue by viewModel.queue.collectAsStateWithLifecycle()
+                val repeatMode by viewModel.repeatMode.collectAsStateWithLifecycle()
+                val isShuffleEnabled by viewModel.isShuffleEnabled.collectAsStateWithLifecycle()
+                val playerVisualVariant by viewModel.playerVisualVariant.collectAsStateWithLifecycle()
                 val sleepRemainingSeconds by viewModel.sleepRemainingSeconds.collectAsStateWithLifecycle()
                 val isEndOfTrackSleepActive by viewModel.isEndOfTrackSleepActive.collectAsStateWithLifecycle()
 
@@ -262,6 +266,9 @@ fun MusicProApp(
                     currentPositionMs = currentPositionMs,
                     durationMs = durationMs,
                     queue = queue,
+                    repeatMode = repeatMode,
+                    isShuffleEnabled = isShuffleEnabled,
+                    playerVisualVariant = playerVisualVariant,
                     sleepRemainingSeconds = sleepRemainingSeconds,
                     isEndOfTrackSleepActive = isEndOfTrackSleepActive,
                     onTogglePlayPause = { viewModel.togglePlayPause() },
@@ -269,6 +276,10 @@ fun MusicProApp(
                     onNext = { viewModel.next() },
                     onPrevious = { viewModel.previous() },
                     onToggleFavorite = { track -> viewModel.toggleFavorite(track) },
+                    onCycleRepeatMode = { viewModel.cycleRepeatMode() },
+                    onToggleRepeatOne = { viewModel.toggleRepeatOne() },
+                    onToggleShuffle = { viewModel.toggleShuffle() },
+                    onSetPlayerVisualVariant = { variant -> viewModel.setPlayerVisualVariant(variant) },
                     onTrackFromQueueSelected = { track -> viewModel.playTrack(track) },
                     onMoveQueueItem = { from, to -> viewModel.moveQueueItem(from, to) },
                     onRemoveQueueItem = { index -> viewModel.removeQueueItem(index) },

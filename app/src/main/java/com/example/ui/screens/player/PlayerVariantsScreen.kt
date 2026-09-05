@@ -86,8 +86,13 @@ fun PlayerVariantsScreen(
     val isPlaying by viewModel.isPlaying.collectAsState()
     val currentPositionMs by viewModel.currentPositionMs.collectAsState()
     val durationMs by viewModel.durationMs.collectAsState()
+    val currentVariantName by viewModel.playerVisualVariant.collectAsState()
 
-    var selectedVariant by remember { mutableStateOf(PlayerVisualVariant.VINYL) }
+    val selectedVariant = when (currentVariantName) {
+        "WAVEFORM" -> PlayerVisualVariant.WAVEFORM
+        "COVER_ART" -> PlayerVisualVariant.COVER_ART
+        else -> PlayerVisualVariant.VINYL
+    }
 
     // Vinyl rotation animation
     val infiniteTransition = rememberInfiniteTransition(label = "vinylSpin")
@@ -189,7 +194,7 @@ fun PlayerVariantsScreen(
                                 color = if (isSelected) CyanAccent else Color.Transparent,
                                 shape = RoundedCornerShape(12.dp)
                             )
-                            .clickable { selectedVariant = variant }
+                            .clickable { viewModel.setPlayerVisualVariant(variant.name) }
                             .padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {

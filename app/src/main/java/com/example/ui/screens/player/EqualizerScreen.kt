@@ -74,14 +74,13 @@ fun EqualizerScreen(
     val activeTrack by viewModel.activeTrack.collectAsState()
     val scrollState = rememberScrollState()
 
-    var isEqEnabled by remember { mutableStateOf(true) }
-    var selectedPreset by remember { mutableStateOf("Bass Boost") }
+    val isEqEnabled by viewModel.isEqEnabled.collectAsState()
+    val selectedPreset by viewModel.eqPreset.collectAsState()
+    val bandLevels by viewModel.bandLevels.collectAsState()
+    val bassBoostLevel by viewModel.bassBoostLevel.collectAsState()
+    val virtualizerLevel by viewModel.virtualizerLevel.collectAsState()
 
     val bandFrequencies = remember { listOf("60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz") }
-    val bandLevels = remember { mutableStateListOf(5f, 3f, 0f, 2f, 4f) }
-
-    var bassBoostLevel by remember { mutableFloatStateOf(65f) }
-    var virtualizerLevel by remember { mutableFloatStateOf(40f) }
 
     val presets = listOf(
         "Plat" to listOf(0f, 0f, 0f, 0f, 0f),
@@ -149,7 +148,7 @@ fun EqualizerScreen(
 
                 Switch(
                     checked = isEqEnabled,
-                    onCheckedChange = { isEqEnabled = it },
+                    onCheckedChange = { viewModel.setEqEnabled(it) },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = CyanAccent,
                         checkedTrackColor = CyanAccent.copy(alpha = 0.3f),
@@ -187,7 +186,7 @@ fun EqualizerScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "${track.format} • ${track.bitrate} • 44.1 kHz Hi-Res",
+                            text = "${track.format} • ${track.bitrate} kbps • Effets DSP actifs",
                             fontSize = 10.sp,
                             color = TextSecondary
                         )
@@ -197,13 +196,26 @@ fun EqualizerScreen(
             }
 
             // Presets horizontaux
-            Text(
-                text = "PRÉSÉLECTIONS",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextMuted,
-                letterSpacing = 1.sp
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "PRÉSÉLECTIONS",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextMuted,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = "Réinitialiser",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = CyanAccent,
+                    modifier = Modifier.clickable { viewModel.resetEqualizer() }
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -225,8 +237,7 @@ fun EqualizerScreen(
                                 shape = RoundedCornerShape(20.dp)
                             )
                             .clickable {
-                                selectedPreset = name
-                                values.forEachIndexed { i, v -> bandLevels[i] = v }
+                                viewModel.applyEqPreset(name, values)
                             }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
@@ -263,7 +274,7 @@ fun EqualizerScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 bandFrequencies.forEachIndexed { index, freq ->
-                    val level = bandLevels[index]
+                    val level = if (index in bandLevels.indices) bandLevels[index] else 0f
                     Column {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -282,8 +293,7 @@ fun EqualizerScreen(
                             value = level,
                             onValueChange = {
                                 if (isEqEnabled) {
-                                    bandLevels[index] = it
-                                    selectedPreset = "Personnalisé"
+                                    viewModel.setBandLevel(index, it)
                                 }
                             },
                             valueRange = -10f..10f,
@@ -328,7 +338,7 @@ fun EqualizerScreen(
                     Text(text = "${bassBoostLevel.toInt()}%", fontSize = 11.sp, color = CyanAccent)
                     Slider(
                         value = bassBoostLevel,
-                        onValueChange = { bassBoostLevel = it },
+                        onValueChange = { viewModel.setBassBoost(it) },
                         valueRange = 0f..100f,
                         enabled = isEqEnabled,
                         colors = SliderDefaults.colors(
@@ -351,7 +361,7 @@ fun EqualizerScreen(
                     Text(text = "${virtualizerLevel.toInt()}%", fontSize = 11.sp, color = PurpleAccent)
                     Slider(
                         value = virtualizerLevel,
-                        onValueChange = { virtualizerLevel = it },
+                        onValueChange = { viewModel.setVirtualizer(it) },
                         valueRange = 0f..100f,
                         enabled = isEqEnabled,
                         colors = SliderDefaults.colors(

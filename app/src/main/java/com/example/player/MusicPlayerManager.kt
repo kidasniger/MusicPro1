@@ -24,9 +24,19 @@ class MusicPlayerManager(context: Context) {
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private var progressJob: Job? = null
 
+    val audioEffectsManager = AudioEffectsManager()
+
     val exoPlayer: ExoPlayer = ExoPlayer.Builder(appContext).build().apply {
         repeatMode = Player.REPEAT_MODE_ALL
     }
+
+    private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_ALL)
+    val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
+
+    private val _isShuffleEnabled = MutableStateFlow(false)
+    val isShuffleEnabled: StateFlow<Boolean> = _isShuffleEnabled.asStateFlow()
+
+    private var crossfadeDurationMs: Long = 0L
 
     private val _activeTrack = MutableStateFlow<TrackEntity?>(null)
     val activeTrack: StateFlow<TrackEntity?> = _activeTrack.asStateFlow()
@@ -63,9 +73,17 @@ class MusicPlayerManager(context: Context) {
     init {
         checkAudioOutputDevice()
         exoPlayer.addListener(object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                audioEffectsManager.initAudioEffects(audioSessionId)
+            }
+
             override fun onIsPlayingChanged(isPlayingNow: Boolean) {
                 _isPlaying.value = isPlayingNow
                 if (isPlayingNow) {
+                    val sessionId = exoPlayer.audioSessionId
+                    if (sessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
+                        audioEffectsManager.initAudioEffects(sessionId)
+                    }
                     startProgressTracker()
                 } else {
                     progressJob?.cancel()
@@ -80,6 +98,12 @@ class MusicPlayerManager(context: Context) {
                         exoPlayer.pause()
                         _isPlaying.value = false
                         _isEndOfTrackSleepActive.value = false
+                    } else if (_repeatMode.value == Player.REPEAT_MODE_ONE) {
+                        seekTo(0L)
+                        play()
+                    } else if (_repeatMode.value == Player.REPEAT_MODE_OFF && currentIndex >= _queue.value.size - 1) {
+                        exoPlayer.pause()
+                        _isPlaying.value = false
                     } else {
                         skipToNext()
                     }
@@ -282,12 +306,53 @@ class MusicPlayerManager(context: Context) {
         }
     }
 
+    fun updateActiveTrackFavorite(isFavorite: Boolean) {
+        _activeTrack.value = _activeTrack.value?.copy(isFavorite = isFavorite)
+    }
+
+    fun setRepeatMode(mode: Int) {
+        _repeatMode.value = mode
+        exoPlayer.repeatMode = mode
+    }
+
+    fun cycleRepeatMode(): Int {
+        val nextMode = when (_repeatMode.value) {
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE // Répéter 1 morceau
+            Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF // Désactivé
+            else -> Player.REPEAT_MODE_ALL // Répéter tout
+        }
+        setRepeatMode(nextMode)
+        return nextMode
+    }
+
+    fun toggleShuffle() {
+        val newShuffle = !_isShuffleEnabled.value
+        _isShuffleEnabled.value = newShuffle
+        exoPlayer.shuffleModeEnabled = newShuffle
+    }
+
+    fun setCrossfadeSeconds(seconds: Int) {
+        crossfadeDurationMs = (seconds * 1000L).coerceAtLeast(0L)
+    }
+
     fun seekTo(positionMs: Long) {
         exoPlayer.seekTo(positionMs)
         _currentPositionMs.value = positionMs
     }
 
     fun skipToNext() {
+        if (crossfadeDurationMs > 0L) {
+            scope.launch {
+                fadeVolume(down = true)
+                doSkipToNext()
+                fadeVolume(down = false)
+            }
+        } else {
+            doSkipToNext()
+        }
+    }
+
+    private fun doSkipToNext() {
         val currentQueue = _queue.value
         if (currentQueue.isNotEmpty()) {
             currentIndex = (currentIndex + 1) % currentQueue.size
@@ -296,10 +361,35 @@ class MusicPlayerManager(context: Context) {
     }
 
     fun skipToPrevious() {
+        if (crossfadeDurationMs > 0L) {
+            scope.launch {
+                fadeVolume(down = true)
+                doSkipToPrevious()
+                fadeVolume(down = false)
+            }
+        } else {
+            doSkipToPrevious()
+        }
+    }
+
+    private fun doSkipToPrevious() {
         val currentQueue = _queue.value
         if (currentQueue.isNotEmpty()) {
             currentIndex = if (currentIndex - 1 < 0) currentQueue.size - 1 else currentIndex - 1
             playTrack(currentQueue[currentIndex])
+        }
+    }
+
+    private suspend fun fadeVolume(down: Boolean) {
+        val steps = 6
+        val stepDelay = (crossfadeDurationMs / (steps * 2)).coerceIn(10L, 80L)
+        for (i in 1..steps) {
+            val volume = if (down) (steps - i) / steps.toFloat() else i / steps.toFloat()
+            exoPlayer.volume = volume
+            delay(stepDelay)
+        }
+        if (!down) {
+            exoPlayer.volume = 1f
         }
     }
 

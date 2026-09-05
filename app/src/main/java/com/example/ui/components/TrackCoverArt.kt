@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -18,10 +19,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.ui.theme.CyanAccent
 import com.example.ui.theme.PurpleAccent
 import com.example.ui.theme.PurpleDeep
@@ -58,6 +61,7 @@ fun parseGradientString(gradientStr: String?): Brush {
 fun TrackCoverArt(
     gradientStr: String?,
     title: String,
+    coverArtUri: String? = null,
     size: Dp = 48.dp,
     shape: Shape = RoundedCornerShape(12.dp),
     isVinyl: Boolean = false,
@@ -71,10 +75,27 @@ fun TrackCoverArt(
             modifier = modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(brush)
+                .background(Color(0xFF121216))
                 .border(2.dp, Color.White.copy(alpha = 0.20f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
+            if (!coverArtUri.isNullOrBlank()) {
+                AsyncImage(
+                    model = coverArtUri,
+                    contentDescription = title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(brush)
+                )
+            }
+
             // Sillon décoratif externe
             Box(
                 modifier = Modifier
@@ -109,21 +130,32 @@ fun TrackCoverArt(
                 .border(1.dp, Color.White.copy(alpha = 0.12f), shape),
             contentAlignment = Alignment.Center
         ) {
-            val initial = title.firstOrNull()?.uppercaseChar()?.toString() ?: "M"
-            Text(
-                text = initial,
-                color = Color.White.copy(alpha = 0.90f),
-                fontWeight = FontWeight.Black,
-                fontSize = (size.value * 0.42f).sp
-            )
-            Icon(
-                imageVector = Icons.Default.MusicNote,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.40f),
-                modifier = Modifier
-                    .size(size * 0.28f)
-                    .align(Alignment.BottomEnd)
-            )
+            if (!coverArtUri.isNullOrBlank()) {
+                AsyncImage(
+                    model = coverArtUri,
+                    contentDescription = title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(shape)
+                )
+            } else {
+                val initial = title.firstOrNull()?.uppercaseChar()?.toString() ?: "M"
+                Text(
+                    text = initial,
+                    color = Color.White.copy(alpha = 0.90f),
+                    fontWeight = FontWeight.Black,
+                    fontSize = (size.value * 0.42f).sp
+                )
+                Icon(
+                    imageVector = Icons.Default.MusicNote,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.40f),
+                    modifier = Modifier
+                        .size(size * 0.28f)
+                        .align(Alignment.BottomEnd)
+                )
+            }
         }
     }
 }
