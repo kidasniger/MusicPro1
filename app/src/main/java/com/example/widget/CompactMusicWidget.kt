@@ -47,8 +47,8 @@ class CompactMusicWidget : GlanceAppWidget() {
         provideContent {
             GlanceTheme {
                 CompactWidgetContent(
-                    title = track?.title ?: "Midnight City",
-                    artist = track?.artist ?: "M83",
+                    title = track?.title ?: "Aucune lecture",
+                    artist = track?.artist ?: "MusicPro",
                     isPlaying = isPlaying
                 )
             }

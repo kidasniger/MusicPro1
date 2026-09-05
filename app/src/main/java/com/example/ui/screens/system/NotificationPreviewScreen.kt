@@ -137,7 +137,7 @@ fun NotificationPreviewScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Simulation du volet de notifications Android
+            // Aperçu du volet de notifications Android
             Text(
                 text = "VOLET DE NOTIFICATIONS SYSTÈME",
                 fontSize = 11.sp,

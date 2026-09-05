@@ -214,21 +214,7 @@ fun HistoryScreen(
                                 isActive = isActive,
                                 isPlaying = isPlaying && isActive,
                                 onTrackClick = {
-                                    val track = TrackEntity(
-                                        id = item.trackId,
-                                        title = item.title,
-                                        artist = item.artist,
-                                        album = item.album,
-                                        durationMs = item.durationMs,
-                                        durationFormatted = item.durationFormatted,
-                                        bitrate = item.bitrate,
-                                        format = item.format,
-                                        size = item.size,
-                                        year = item.year,
-                                        isFavorite = item.isFavorite,
-                                        coverGradient = item.coverGradient
-                                    )
-                                    viewModel.playTrack(track)
+                                    viewModel.playTrackById(item.trackId)
                                 }
                             )
                             Spacer(modifier = Modifier.height(8.dp))

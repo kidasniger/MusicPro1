@@ -227,7 +227,7 @@ fun BluetoothHeadphoneScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (isPlaying) "En cours : ${activeTrack?.title ?: "Midnight City"}" else "Lecture en pause",
+                                text = if (isPlaying && activeTrack != null) "En cours : ${activeTrack?.title}" else if (activeTrack != null) "Lecture en pause" else "Aucune lecture active",
                                 fontSize = 13.sp,
                                 color = TextPrimary
                             )
@@ -246,9 +246,9 @@ fun BluetoothHeadphoneScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Actions de simulation et test en direct (pour vérifier les comportements attendus)
+        // Actions de contrôle matériel et gestion audio
         Text(
-            text = "SIMULATEUR DE COMPORTEMENT CASQUE",
+            text = "CONTRÔLE DU MATÉRIEL AUDIO",
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
             color = TextMuted,

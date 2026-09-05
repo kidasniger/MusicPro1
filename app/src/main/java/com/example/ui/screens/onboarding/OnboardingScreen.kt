@@ -306,7 +306,7 @@ private fun OnboardingStepTwo() {
                     )
             )
 
-            // Lignes de paroles simulées
+            // Silhouette décorative des lignes de paroles
             Column(
                 modifier = Modifier
                     .align(Alignment.Center)

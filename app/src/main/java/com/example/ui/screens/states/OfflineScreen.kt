@@ -69,7 +69,7 @@ import com.example.ui.viewmodel.MainViewModel
 
 /**
  * Écran d'état Hors-ligne dédié (id="offline"), conforme à la maquette.
- * Présente de manière exhaustive le statut réseau, la simulation du mode hors-ligne,
+ * Présente de manière exhaustive le statut réseau, le diagnostic du mode hors-ligne,
  * les fonctionnalités locales 100% fonctionnelles et les fonctionnalités Cloud désactivées.
  */
 @Composable

@@ -31,6 +31,8 @@ interface MusicRepository {
     suspend fun getTrackById(id: Long): TrackEntity?
     suspend fun getPlaylistById(playlistId: Long): PlaylistEntity?
     suspend fun insertTracks(tracks: List<TrackEntity>)
+    suspend fun deleteSimulatedTracks()
+    suspend fun syncLocalTracks(scannedTracks: List<TrackEntity>)
     suspend fun toggleFavorite(trackId: Long, isFavorite: Boolean)
     suspend fun recordHistory(trackId: Long)
     suspend fun clearHistory()
@@ -71,6 +73,17 @@ class DefaultMusicRepository(
         playlistDao.getPlaylistById(playlistId)
 
     override suspend fun insertTracks(tracks: List<TrackEntity>) = trackDao.insertTracks(tracks)
+
+    override suspend fun deleteSimulatedTracks() {
+        trackDao.deleteSimulatedTracks()
+    }
+
+    override suspend fun syncLocalTracks(scannedTracks: List<TrackEntity>) {
+        trackDao.deleteSimulatedTracks()
+        if (scannedTracks.isNotEmpty()) {
+            trackDao.insertTracks(scannedTracks)
+        }
+    }
 
     override suspend fun toggleFavorite(trackId: Long, isFavorite: Boolean) {
         trackDao.setFavorite(trackId, isFavorite)

@@ -181,8 +181,6 @@ class MusicPlayerManager(context: Context) {
             exoPlayer.setMediaItem(mediaItem)
             exoPlayer.prepare()
             exoPlayer.play()
-        } else {
-            // Pour démo ou pistes simulées sans fichier physique immédiat
             _isPlaying.value = true
             startProgressTracker()
         }

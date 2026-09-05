@@ -91,13 +91,13 @@ fun WidgetsGalleryScreen(
     val durationMs by viewModel.durationMs.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
-    val title = activeTrack?.title ?: "Midnight City"
-    val artist = activeTrack?.artist ?: "M83"
-    val album = activeTrack?.album ?: "Hurry Up, We're Dreaming"
+    val title = activeTrack?.title ?: "Aucun titre sélectionné"
+    val artist = activeTrack?.artist ?: "MusicPro"
+    val album = activeTrack?.album ?: ""
     val currentLyric = if (uiState.lyrics.isNotEmpty() && uiState.currentLyricIndex in uiState.lyrics.indices) {
         uiState.lyrics[uiState.currentLyricIndex].text
     } else {
-        "The city is my church, it wraps in the blinding twilight"
+        "Aucune parole synchronisée active"
     }
 
     val tabs = listOf("wCompact", "wStandard", "wLyrics")
@@ -265,7 +265,7 @@ private fun CompactWidgetSection(
             modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
         )
 
-        // Rendu en taille réelle simulé sur fond de bureau Android
+        // Aperçu en taille réelle sur fond de bureau Android
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -376,7 +376,7 @@ private fun StandardWidgetSection(
             modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
         )
 
-        // Rendu simulé
+        // Aperçu du widget standard
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -550,7 +550,7 @@ private fun LyricsWidgetSection(
             modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
         )
 
-        // Rendu simulé
+        // Aperçu du widget paroles
         Box(
             modifier = Modifier
                 .fillMaxWidth()

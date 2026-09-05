@@ -516,7 +516,7 @@ fun MusicProApp(
                 )
             }
 
-            // 29. Écran Hors-ligne dédié & Simulation (id="offline")
+            // 29. Écran Hors-ligne dédié (id="offline")
             composable(Screen.Offline.route) {
                 OfflineScreen(
                     viewModel = viewModel,

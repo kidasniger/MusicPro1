@@ -43,13 +43,13 @@ class LyricsMusicWidget : GlanceAppWidget() {
         val playerManager = app?.container?.playerManager
         val track = playerManager?.activeTrack?.value
         val isPlaying = playerManager?.isPlaying?.value ?: false
-        val currentLyric = "The city is my church, it wraps in the blinding twilight"
+        val currentLyric = if (track != null) "Paroles synchronisées MusicPro" else "Aucune lecture en cours"
 
         provideContent {
             GlanceTheme {
                 LyricsWidgetContent(
-                    title = track?.title ?: "Midnight City",
-                    artist = track?.artist ?: "M83",
+                    title = track?.title ?: "Aucune lecture",
+                    artist = track?.artist ?: "MusicPro",
                     lyricLine = currentLyric,
                     isPlaying = isPlaying
                 )

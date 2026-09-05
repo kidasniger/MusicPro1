@@ -240,7 +240,7 @@ fun EqualizerSheet(
 
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            // Curseur Slider Vertical simulé dans Compose
+                            // Curseur Slider Vertical
                             Slider(
                                 value = gain,
                                 onValueChange = { newGain ->

@@ -224,6 +224,15 @@ class MainViewModel(
         }
     }
 
+    fun playTrackById(trackId: Long) {
+        viewModelScope.launch {
+            val track = musicRepository.getTrackById(trackId)
+            if (track != null && track.path.isNotEmpty()) {
+                playTrack(track)
+            }
+        }
+    }
+
     fun togglePlayPause() {
         playerManager.togglePlayPause()
     }
@@ -345,13 +354,12 @@ class MainViewModel(
 
     fun scanLocalMusic() {
         viewModelScope.launch {
+            musicRepository.deleteSimulatedTracks()
             if (mediaStoreScanner != null) {
                 val scanned = mediaStoreScanner.scanAudioFiles()
-                if (scanned.isNotEmpty()) {
-                    musicRepository.insertTracks(scanned)
-                    if (playerManager.activeTrack.value == null) {
-                        playerManager.setQueue(scanned, startIndex = 0)
-                    }
+                musicRepository.syncLocalTracks(scanned)
+                if (scanned.isNotEmpty() && playerManager.activeTrack.value == null) {
+                    playerManager.setQueue(scanned, startIndex = 0)
                 }
             }
         }

@@ -36,4 +36,10 @@ interface TrackDao {
 
     @Query("SELECT COUNT(*) FROM tracks")
     suspend fun getTrackCount(): Int
+
+    @Query("DELETE FROM tracks WHERE path = '' OR path IS NULL OR (path NOT LIKE 'content://%' AND path NOT LIKE '/%')")
+    suspend fun deleteSimulatedTracks()
+
+    @Query("DELETE FROM tracks")
+    suspend fun deleteAllTracks()
 }

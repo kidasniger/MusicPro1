@@ -50,9 +50,9 @@ class StandardMusicWidget : GlanceAppWidget() {
         provideContent {
             GlanceTheme {
                 StandardWidgetContent(
-                    title = track?.title ?: "Midnight City",
-                    artist = track?.artist ?: "M83",
-                    album = track?.album ?: "Hurry Up, We're Dreaming",
+                    title = track?.title ?: "Aucune lecture",
+                    artist = track?.artist ?: "MusicPro",
+                    album = track?.album ?: "",
                     isPlaying = isPlaying,
                     progressRatio = progressRatio
                 )
