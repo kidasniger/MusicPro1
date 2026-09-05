@@ -1,0 +1,109 @@
+name: Android Build & Release
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Release Android App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare Secrets and Environment
+        run: |
+          # Crée le fichier .env si non présent (requis par le plugin secrets gradle)
+          if [ ! -f .env ]; then
+            if [ -f .env.example ]; then
+              cp .env.example .env
+            else
+              touch .env
+            fi
+          fi
+          # Injecte la clé Gemini depuis les secrets GitHub si configurée
+          if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
+            sed -i '/^GEMINI_API_KEY=/d' .env || true
+            echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+          fi
+
+      - name: Setup Custom Keystore (Optional)
+        id: keystore
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "Configuration de la clé de signature personnalisée..."
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release-upload.jks
+            echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/release-upload.jks" >> $GITHUB_ENV
+            echo "STORE_PASSWORD=${{ secrets.STORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+          else
+            echo "Aucune clé personnalisée spécifiée. Utilisation de la configuration de signature automatique intégrée."
+          fi
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Build Release APK and Bundle (AAB)
+        run: ./gradlew assembleRelease bundleRelease --stacktrace
+
+      - name: Upload Release APK to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicPro-Release-APK
+          path: app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload Release AAB to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicPro-Release-AAB
+          path: app/build/outputs/bundle/release/app-release.aab
+
+      - name: Create GitHub Release on Tag or Main Push
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v1.0.{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('MusicPro Release v1.0.{0}', github.run_number) }}
+          body: |
+            ## 🎵 MusicPro - Production Release
+            Release automatisée déclenchée par push sur `${{ github.ref_name }}` (`${{ github.sha }}`).
+
+            ### 📦 Fichiers inclus :
+            - **`app-release.apk`** : Prêt à être installé directement sur n'importe quel smartphone ou tablette Android.
+            - **`app-release.aab`** : Fichier Android App Bundle officiel pour publication sur le Google Play Store.
+
+            ### 🚀 Caractéristiques :
+            - Scanner de musique locale natif (MediaStore Android)
+            - Moteur audio ExoPlayer Media3 avec service en arrière-plan
+            - Contrôle audio Bluetooth et coupure automatique *Becoming Noisy*
+            - Paroles synchronisées LRCLIB et assistant IA Groq
+            - Base de données Room locale ultra-rapide
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

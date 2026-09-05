@@ -79,7 +79,6 @@ fun OfflineScreen(
     modifier: Modifier = Modifier
 ) {
     val isOffline by viewModel.isOffline.collectAsState()
-    val isSimulatedOffline by viewModel.isSimulatedOffline.collectAsState()
 
     Box(
         modifier = modifier
@@ -217,43 +216,36 @@ fun OfflineScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Commutateur de simulation
+                    // Indicateur de statut réseau réel
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
                             .background(SurfaceDark)
                             .border(1.dp, BorderSubtle, RoundedCornerShape(14.dp))
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Simuler le mode hors-ligne",
+                                text = if (isOffline) "Appareil actuellement hors-ligne" else "Connecté au réseau (${viewModel.getNetworkTypeName()})",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                color = if (isOffline) AmberAccent else SuccessGreen
                             )
                             Text(
-                                text = "Désactive temporairement les appels LRCLIB et Groq pour tester le comportement",
+                                text = if (isOffline) "La lecture locale fonctionne à 100%. Les services cloud (LRCLIB, IA) nécessitent une connexion." else "Recherche de paroles et IA prêtes.",
                                 fontSize = 11.sp,
                                 color = TextMuted,
                                 lineHeight = 16.sp
                             )
                         }
-                        Switch(
-                            checked = isSimulatedOffline,
-                            onCheckedChange = { checked ->
-                                viewModel.toggleSimulateOffline(checked)
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = AmberAccent,
-                                uncheckedThumbColor = TextMuted,
-                                uncheckedTrackColor = SurfaceElevated
-                            ),
-                            modifier = Modifier.testTag("simulate_offline_switch")
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(if (isOffline) AmberAccent else SuccessGreen)
                         )
                     }
                 }

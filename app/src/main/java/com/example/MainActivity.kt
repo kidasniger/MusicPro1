@@ -83,7 +83,9 @@ class MainActivity : ComponentActivity() {
             musicRepository = appContainer.musicRepository,
             lyricsRepository = appContainer.lyricsRepository,
             playerManager = appContainer.playerManager,
-            userPreferencesRepository = appContainer.userPreferencesRepository
+            userPreferencesRepository = appContainer.userPreferencesRepository,
+            networkMonitor = appContainer.networkMonitor,
+            mediaStoreScanner = appContainer.mediaStoreScanner
         )
     }
 
@@ -183,6 +185,7 @@ fun MusicProApp(
             composable(Screen.Permissions.route) {
                 PermissionsScreen(
                     onPermissionsComplete = {
+                        viewModel.scanLocalMusic()
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Permissions.route) { inclusive = true }
                         }

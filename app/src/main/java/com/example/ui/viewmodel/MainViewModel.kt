@@ -160,7 +160,7 @@ class MainViewModel(
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     init {
-        seedInitialTracksIfEmpty()
+        scanLocalMusic()
         observePlaybackForLyrics()
         observeNetworkState()
     }
@@ -214,83 +214,6 @@ class MainViewModel(
                     )
                 }
             }
-        }
-    }
-
-    private fun seedInitialTracksIfEmpty() {
-        viewModelScope.launch {
-            val sampleTracks = listOf(
-                TrackEntity(
-                    id = 1,
-                    title = "Blinding Lights",
-                    artist = "The Weeknd",
-                    album = "After Hours",
-                    durationMs = 202_000,
-                    durationFormatted = "3:22",
-                    bitrate = "320kbps",
-                    format = "MP3",
-                    size = "7.8 MB",
-                    year = 2020,
-                    coverGradient = "from-[#ff3a3a] to-[#7a0a0a]"
-                ),
-                TrackEntity(
-                    id = 2,
-                    title = "As It Was",
-                    artist = "Harry Styles",
-                    album = "Harry's House",
-                    durationMs = 167_000,
-                    durationFormatted = "2:47",
-                    bitrate = "FLAC 24-bit",
-                    format = "FLAC",
-                    size = "38.5 MB",
-                    year = 2022,
-                    isFavorite = true,
-                    coverGradient = "from-[#22D3EE] to-[#A855F7]"
-                ),
-                TrackEntity(
-                    id = 3,
-                    title = "Levitating",
-                    artist = "Dua Lipa",
-                    album = "Future Nostalgia",
-                    durationMs = 203_000,
-                    durationFormatted = "3:23",
-                    bitrate = "256kbps",
-                    format = "M4A",
-                    size = "6.4 MB",
-                    year = 2020,
-                    coverGradient = "from-[#f472b6] to-[#5B21B6]"
-                ),
-                TrackEntity(
-                    id = 4,
-                    title = "Stay",
-                    artist = "The Kid LAROI, Bieber",
-                    album = "F*CK LOVE 3",
-                    durationMs = 141_000,
-                    durationFormatted = "2:21",
-                    bitrate = "320kbps",
-                    format = "MP3",
-                    size = "5.5 MB",
-                    year = 2021,
-                    coverGradient = "from-[#facc15] to-[#ea580c]"
-                ),
-                TrackEntity(
-                    id = 5,
-                    title = "Good 4 U",
-                    artist = "Olivia Rodrigo",
-                    album = "SOUR",
-                    durationMs = 178_000,
-                    durationFormatted = "2:58",
-                    bitrate = "FLAC 24-bit",
-                    format = "FLAC",
-                    size = "34.2 MB",
-                    year = 2021,
-                    coverGradient = "from-[#a78bfa] to-[#1e1b4b]"
-                )
-            )
-            musicRepository.insertTracks(sampleTracks)
-
-            // Définit le morceau actif par défaut ("As It Was")
-            playerManager.setQueue(sampleTracks, startIndex = 1)
         }
     }
 
@@ -426,10 +349,11 @@ class MainViewModel(
                 val scanned = mediaStoreScanner.scanAudioFiles()
                 if (scanned.isNotEmpty()) {
                     musicRepository.insertTracks(scanned)
-                    return@launch
+                    if (playerManager.activeTrack.value == null) {
+                        playerManager.setQueue(scanned, startIndex = 0)
+                    }
                 }
             }
-            seedInitialTracksIfEmpty()
         }
     }
 

@@ -266,57 +266,34 @@ fun BluetoothHeadphoneScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Tester la déconnexion / connexion en direct",
+                    text = "Sortie audio et protection Becoming Noisy",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = TextPrimary
                 )
                 Text(
-                    text = "Conforme à l'écran 'bt' : la déconnexion d'un casque ou l'événement Becoming Noisy met immédiatement la musique en pause sans risque pour l'environnement sonore.",
+                    text = "Conforme aux normes Android : le récepteur système HeadphoneBluetoothReceiver surveille en permanence les déconnexions Bluetooth et casques filaires pour mettre automatiquement la lecture en pause.",
                     fontSize = 12.sp,
                     color = TextSecondary,
                     modifier = Modifier.padding(top = 4.dp, bottom = 14.dp)
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                Button(
+                    onClick = { viewModel.refreshAudioDevices() },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanAccent),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("btn_refresh_audio_output")
                 ) {
-                    Button(
-                        onClick = { viewModel.simulateBluetoothConnect("Sony WH-1000XM5") },
-                        colors = ButtonDefaults.buttonColors(containerColor = CyanAccent),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("btn_simulate_connect")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Bluetooth,
-                            contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Connecter", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    OutlinedButton(
-                        onClick = { viewModel.simulateBluetoothDisconnect("Sony WH-1000XM5") },
-                        shape = RoundedCornerShape(10.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRed),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("btn_simulate_disconnect")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.BluetoothDisabled,
-                            contentDescription = null,
-                            tint = ErrorRed,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Déconnecter", color = ErrorRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Bluetooth,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Actualiser les périphériques audio", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
                 if (!lastEvent.isNullOrEmpty()) {
@@ -329,7 +306,7 @@ fun BluetoothHeadphoneScreen(
                             .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            text = "Dernier événement : $lastEvent",
+                            text = "Dernier événement système : $lastEvent",
                             fontSize = 11.sp,
                             color = CyanAccent
                         )

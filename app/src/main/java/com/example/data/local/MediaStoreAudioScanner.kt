@@ -37,6 +37,7 @@ class MediaStoreAudioScanner(private val context: Context) {
                 null,
                 "${MediaStore.Audio.Media.TITLE} ASC"
             )?.use { cursor ->
+                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                 val titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
                 val artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
                 val albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
@@ -55,19 +56,25 @@ class MediaStoreAudioScanner(private val context: Context) {
                 var gradIdx = 0
 
                 while (cursor.moveToNext()) {
+                    val id = cursor.getLong(idColumn)
                     val title = cursor.getString(titleColumn) ?: "Morceau inconnu"
                     val artist = cursor.getString(artistColumn) ?: "Artiste inconnu"
                     val album = cursor.getString(albumColumn) ?: "Album inconnu"
                     val durationMs = cursor.getLong(durationColumn)
                     val sizeBytes = cursor.getLong(sizeColumn)
-                    val path = cursor.getString(dataColumn) ?: ""
+                    val dataPath = cursor.getString(dataColumn) ?: ""
+                    val contentUri = android.content.ContentUris.withAppendedId(
+                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                        id
+                    ).toString()
+                    val path = if (contentUri.isNotEmpty()) contentUri else dataPath
 
                     if (durationMs > 10_000) {
                         val minutes = (durationMs / 1000) / 60
                         val seconds = (durationMs / 1000) % 60
                         val durationFormatted = String.format("%d:%02d", minutes, seconds)
                         val sizeFormatted = String.format("%.1f MB", sizeBytes.toDouble() / (1024 * 1024))
-                        val ext = path.substringAfterLast('.', "MP3").uppercase()
+                        val ext = if (dataPath.contains('.')) dataPath.substringAfterLast('.').uppercase() else "MP3"
 
                         tracks.add(
                             TrackEntity(
