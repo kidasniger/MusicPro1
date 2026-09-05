@@ -256,6 +256,7 @@ fun PlayerVariantsScreen(
                                 TrackCoverArt(
                                     gradientStr = activeTrack?.coverGradient,
                                     title = activeTrack?.title ?: "MusicPro",
+                                    coverArtUri = activeTrack?.coverArtUri,
                                     size = 100.dp,
                                     shape = CircleShape
                                 )
@@ -329,6 +330,7 @@ fun PlayerVariantsScreen(
                             TrackCoverArt(
                                 gradientStr = activeTrack?.coverGradient,
                                 title = activeTrack?.title ?: "MusicPro",
+                                coverArtUri = activeTrack?.coverArtUri,
                                 size = 260.dp,
                                 shape = RoundedCornerShape(24.dp)
                             )

@@ -30,6 +30,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +65,9 @@ fun IntegrateScreen(
 ) {
     val activeTrack by viewModel.activeTrack.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var isSaved by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -216,7 +222,16 @@ fun IntegrateScreen(
                             listOf(CyanAccent, PurpleAccent)
                         )
                     )
-                    .clickable { onBackClick() }
+                    .clickable {
+                        viewModel.embedLyricsToActiveTrack(context) { success ->
+                            if (success) {
+                                isSaved = true
+                                android.widget.Toast.makeText(context, "Paroles intégrées avec succès au fichier audio !", android.widget.Toast.LENGTH_LONG).show()
+                            } else {
+                                android.widget.Toast.makeText(context, "Erreur lors de l'intégration des paroles.", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
                     .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -225,13 +240,13 @@ fun IntegrateScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Save,
+                        imageVector = if (isSaved) Icons.Default.Save else Icons.Default.Save,
                         contentDescription = null,
                         tint = BackgroundDark,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        text = "ENREGISTRER DANS LE FICHIER AUDIO",
+                        text = if (isSaved) "PAROLES INTÉGRÉES DANS LE FICHIER !" else "ENREGISTRER DANS LE FICHIER AUDIO",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = BackgroundDark

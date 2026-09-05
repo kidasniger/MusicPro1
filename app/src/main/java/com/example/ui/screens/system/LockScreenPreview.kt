@@ -120,6 +120,7 @@ fun LockScreenPreview(
             TrackCoverArt(
                 gradientStr = displayTrack?.coverGradient ?: "from-[#22D3EE] to-[#A855F7]",
                 title = displayTrack?.title ?: "MusicPro",
+                coverArtUri = displayTrack?.coverArtUri,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -231,6 +232,7 @@ fun LockScreenPreview(
                             TrackCoverArt(
                                 gradientStr = displayTrack?.coverGradient,
                                 title = displayTrack?.title ?: "MusicPro",
+                                coverArtUri = displayTrack?.coverArtUri,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }

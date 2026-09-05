@@ -142,6 +142,7 @@ fun TrackInfoSheet(
                 TrackCoverArt(
                     gradientStr = track.coverGradient,
                     title = track.title,
+                    coverArtUri = track.coverArtUri,
                     size = 56.dp,
                     shape = RoundedCornerShape(12.dp)
                 )

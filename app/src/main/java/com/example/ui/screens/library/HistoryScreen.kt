@@ -319,6 +319,7 @@ private fun HistoryTrackItem(
             TrackCoverArt(
                 gradientStr = item.coverGradient,
                 title = item.title,
+                coverArtUri = item.coverArtUri,
                 size = 48.dp,
                 shape = RoundedCornerShape(10.dp)
             )

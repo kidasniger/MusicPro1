@@ -56,7 +56,7 @@ class DefaultUserPreferencesRepository(
             preferences[PreferencesKeys.ONBOARDING_COMPLETED] ?: false
         }
 
-    // Récupération de la clé déchiffrée
+    // Récupération de la clé déchiffrée avec fallback BuildConfig
     override val groqApiKey: Flow<String> = context.userDataStore.data
         .map { preferences ->
             val encrypted = preferences[PreferencesKeys.GROQ_API_KEY_ENCRYPTED] ?: ""
@@ -69,12 +69,20 @@ class DefaultUserPreferencesRepository(
                     for (i in decoded.indices) {
                         result[i] = (decoded[i].toInt() xor xorKey[i % xorKey.size].toInt()).toByte()
                     }
-                    String(result)
+                    val decrypted = String(result)
+                    if (decrypted.isNotBlank()) decrypted else getBuildConfigApiKey()
                 } catch (e: Exception) {
-                    ""
+                    getBuildConfigApiKey()
                 }
-            } else ""
+            } else {
+                getBuildConfigApiKey()
+            }
         }
+
+    private fun getBuildConfigApiKey(): String {
+        val key = com.example.BuildConfig.GROQ_API_KEY
+        return if (key.isNotBlank() && key != "your_groq_api_key_here") key else ""
+    }
 
     override val groqModel: Flow<String> = context.userDataStore.data
         .map { preferences ->

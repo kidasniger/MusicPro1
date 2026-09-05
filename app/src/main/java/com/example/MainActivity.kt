@@ -1,6 +1,8 @@
 package com.example
 
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -93,6 +95,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            )
+        }
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
             MusicProTheme(themeMode = themeMode) {
@@ -293,7 +305,8 @@ fun MusicProApp(
                     onNavigateToVariants = { navController.navigate(Screen.PlayerVariants.route) },
                     onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
                     onNavigateToQueue = { navController.navigate(Screen.Queue.route) },
-                    onNavigateToTrackInfo = { navController.navigate(Screen.TrackInfo.route) }
+                    onNavigateToTrackInfo = { navController.navigate(Screen.TrackInfo.route) },
+                    onNavigateToLockScreen = { navController.navigate(Screen.LockScreen.route) }
                 )
             }
 
@@ -442,14 +455,6 @@ fun MusicProApp(
                     onNavigateToOffline = { navController.navigate(Screen.Offline.route) },
                     onNavigateToLogo = { navController.navigate(Screen.Logo.route) },
                     onNavigateToPlayerVariants = { navController.navigate(Screen.PlayerVariants.route) }
-                )
-            }
-
-            // 19. Configuration Groq AI détaillée
-            composable(Screen.GroqConfig.route) {
-                GroqConfigScreen(
-                    viewModel = viewModel,
-                    onBackClick = { navController.popBackStack() }
                 )
             }
 

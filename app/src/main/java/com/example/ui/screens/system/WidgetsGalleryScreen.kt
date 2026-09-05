@@ -183,6 +183,7 @@ fun WidgetsGalleryScreen(
                 title = title,
                 artist = artist,
                 coverGradient = activeTrack?.coverGradient,
+                coverArtUri = activeTrack?.coverArtUri,
                 isPlaying = isPlaying,
                 onTogglePlay = { viewModel.togglePlayPause() }
             )
@@ -191,6 +192,7 @@ fun WidgetsGalleryScreen(
                 artist = artist,
                 album = album,
                 coverGradient = activeTrack?.coverGradient,
+                coverArtUri = activeTrack?.coverArtUri,
                 isPlaying = isPlaying,
                 currentPositionMs = currentPositionMs,
                 durationMs = durationMs,
@@ -202,6 +204,7 @@ fun WidgetsGalleryScreen(
                 title = title,
                 artist = artist,
                 coverGradient = activeTrack?.coverGradient,
+                coverArtUri = activeTrack?.coverArtUri,
                 lyric = currentLyric,
                 isPlaying = isPlaying,
                 onTogglePlay = { viewModel.togglePlayPause() },
@@ -254,6 +257,7 @@ private fun CompactWidgetSection(
     title: String,
     artist: String,
     coverGradient: String? = null,
+    coverArtUri: String? = null,
     isPlaying: Boolean,
     onTogglePlay: () -> Unit
 ) {
@@ -301,6 +305,7 @@ private fun CompactWidgetSection(
                     TrackCoverArt(
                         gradientStr = coverGradient,
                         title = title,
+                        coverArtUri = coverArtUri,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -356,6 +361,7 @@ private fun StandardWidgetSection(
     artist: String,
     album: String,
     coverGradient: String? = null,
+    coverArtUri: String? = null,
     isPlaying: Boolean,
     currentPositionMs: Long,
     durationMs: Long,
@@ -411,6 +417,7 @@ private fun StandardWidgetSection(
                         TrackCoverArt(
                             gradientStr = coverGradient,
                             title = title,
+                            coverArtUri = coverArtUri,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -534,6 +541,7 @@ private fun LyricsWidgetSection(
     title: String,
     artist: String,
     coverGradient: String? = null,
+    coverArtUri: String? = null,
     lyric: String,
     isPlaying: Boolean,
     onTogglePlay: () -> Unit,
@@ -585,6 +593,7 @@ private fun LyricsWidgetSection(
                         TrackCoverArt(
                             gradientStr = coverGradient,
                             title = title,
+                            coverArtUri = coverArtUri,
                             modifier = Modifier.fillMaxSize()
                         )
                     }

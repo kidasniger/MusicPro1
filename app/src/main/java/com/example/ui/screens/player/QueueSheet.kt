@@ -253,6 +253,7 @@ private fun QueueTrackItem(
         TrackCoverArt(
             gradientStr = track.coverGradient,
             title = track.title,
+            coverArtUri = track.coverArtUri,
             size = 40.dp,
             shape = RoundedCornerShape(8.dp)
         )

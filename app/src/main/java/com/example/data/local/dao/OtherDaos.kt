@@ -26,7 +26,8 @@ data class HistoryWithTrack(
     val size: String,
     val year: Int,
     val isFavorite: Boolean,
-    val coverGradient: String
+    val coverGradient: String,
+    val coverArtUri: String? = null
 )
 
 @Dao
@@ -100,7 +101,7 @@ interface HistoryDao {
     @Query("""
         SELECT h.id, h.trackId, h.playedAt,
                t.title, t.artist, t.album, t.durationMs, t.durationFormatted,
-               t.bitrate, t.format, t.size, t.year, t.isFavorite, t.coverGradient
+               t.bitrate, t.format, t.size, t.year, t.isFavorite, t.coverGradient, t.coverArtUri
         FROM history h
         INNER JOIN tracks t ON h.trackId = t.id
         ORDER BY h.playedAt DESC

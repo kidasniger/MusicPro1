@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
@@ -285,6 +286,37 @@ fun LyricsScreen(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Rechercher sur LRCLIB",
                             tint = TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    // Intégrer les paroles trouvées directement dans le fichier audio
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceGlass)
+                            .border(1.dp, if (uiState.lyricsSource.contains("Fichier audio")) CyanAccent else BorderSubtle, CircleShape)
+                            .clickable {
+                                if (lyrics.isNotEmpty()) {
+                                    viewModel.embedLyricsToActiveTrack(context) { success ->
+                                        if (success) {
+                                            android.widget.Toast.makeText(context, "Paroles intégrées avec succès au fichier audio !", android.widget.Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            android.widget.Toast.makeText(context, "Impossible d'intégrer les paroles.", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                } else {
+                                    android.widget.Toast.makeText(context, "Aucune parole à intégrer pour ce morceau.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Save,
+                            contentDescription = "Intégrer les paroles dans le fichier audio",
+                            tint = if (uiState.lyricsSource.contains("Fichier audio")) CyanAccent else TextPrimary,
                             modifier = Modifier.size(16.dp)
                         )
                     }

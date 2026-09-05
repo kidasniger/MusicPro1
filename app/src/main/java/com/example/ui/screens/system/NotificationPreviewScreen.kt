@@ -223,6 +223,7 @@ fun NotificationPreviewScreen(
                             TrackCoverArt(
                                 gradientStr = displayTrack?.coverGradient,
                                 title = displayTrack?.title ?: "MusicPro",
+                                coverArtUri = displayTrack?.coverArtUri,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }

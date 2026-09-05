@@ -417,6 +417,7 @@ fun TrackListItem(
             TrackCoverArt(
                 gradientStr = track.coverGradient,
                 title = track.title,
+                coverArtUri = track.coverArtUri,
                 size = 46.dp,
                 shape = RoundedCornerShape(10.dp)
             )

@@ -38,6 +38,9 @@ data class MainUiState(
     val lyricsError: String? = null,
     val lyricsOffsetMs: Long = 0L,
     val isTranslated: Boolean = false,
+    val targetLanguage: String = "Français",
+    val isTranslating: Boolean = false,
+    val embedSuccessMessage: String? = null,
     val lrclibSearchResults: List<LrclibResponse> = emptyList(),
     val isSearchingLrclib: Boolean = false,
     val isGroqTranscribing: Boolean = false,
@@ -595,10 +598,100 @@ class MainViewModel(
         _uiState.value = _uiState.value.copy(lyricsOffsetMs = 0L)
     }
 
+    fun setTargetLanguage(language: String) {
+        _uiState.value = _uiState.value.copy(targetLanguage = language)
+        if (_uiState.value.isTranslated) {
+            translateLyrics(language)
+        }
+    }
+
     fun toggleTranslation() {
-        _uiState.value = _uiState.value.copy(
-            isTranslated = !_uiState.value.isTranslated
-        )
+        val willBeTranslated = !_uiState.value.isTranslated
+        _uiState.value = _uiState.value.copy(isTranslated = willBeTranslated)
+        if (willBeTranslated) {
+            val needsTranslation = _uiState.value.lyrics.any { it.translatedText.isNullOrBlank() }
+            if (needsTranslation) {
+                translateLyrics(_uiState.value.targetLanguage)
+            }
+        }
+    }
+
+    fun translateLyrics(targetLanguage: String) {
+        viewModelScope.launch {
+            val currentLines = _uiState.value.lyrics
+            if (currentLines.isEmpty()) return@launch
+
+            _uiState.value = _uiState.value.copy(
+                isTranslating = true,
+                targetLanguage = targetLanguage,
+                isTranslated = true
+            )
+
+            try {
+                val translated = com.example.data.lyrics.LyricsTranslationService.translateLines(
+                    lines = currentLines,
+                    targetLanguage = targetLanguage,
+                    groqApiKey = groqApiKey.value
+                )
+                _uiState.value = _uiState.value.copy(
+                    lyrics = translated,
+                    isTranslating = false
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isTranslating = false)
+            }
+        }
+    }
+
+    fun embedLyricsToActiveTrack(context: Context? = null, onComplete: ((Boolean) -> Unit)? = null) {
+        val track = activeTrack.value ?: return
+        val currentLyrics = _uiState.value.lyrics
+        if (currentLyrics.isEmpty()) {
+            onComplete?.invoke(false)
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val lrcString = LrcParser.toLrc(currentLyrics)
+                musicRepository.updateTrackLyrics(track.id, lrcString)
+
+                // Sauvegarder également un fichier .lrc compagnon si possible
+                withContext(Dispatchers.IO) {
+                    try {
+                        if (track.path.startsWith("/") && !track.path.startsWith("content://")) {
+                            val audioFile = File(track.path)
+                            val parent = audioFile.parentFile
+                            if (parent != null && parent.canWrite()) {
+                                val lrcFile = File(parent, "${audioFile.nameWithoutExtension}.lrc")
+                                lrcFile.writeText(lrcString)
+                            }
+                        }
+                    } catch (_: Exception) {}
+
+                    try {
+                        if (context != null) {
+                            val lrcDir = File(context.filesDir, "lyrics")
+                            if (!lrcDir.exists()) lrcDir.mkdirs()
+                            val cachedLrc = File(lrcDir, "track_${track.id}.lrc")
+                            cachedLrc.writeText(lrcString)
+                        }
+                    } catch (_: Exception) {}
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    lyricsSource = "Fichier audio • Paroles intégrées",
+                    embedSuccessMessage = "Paroles intégrées avec succès au fichier audio !"
+                )
+                onComplete?.invoke(true)
+            } catch (e: Exception) {
+                onComplete?.invoke(false)
+            }
+        }
+    }
+
+    fun clearEmbedSuccessMessage() {
+        _uiState.value = _uiState.value.copy(embedSuccessMessage = null)
     }
 
     fun setGroqApiKey(apiKey: String) {
@@ -702,7 +795,7 @@ class MainViewModel(
             result.onSuccess { response ->
                 val segments = response.segments
                 val lines = if (!segments.isNullOrEmpty()) {
-                    segments.map { seg ->
+                    segments.filter { !it.text.isNullOrBlank() }.map { seg ->
                         val startSec = seg.start ?: 0.0
                         val ms = (startSec * 1000).toLong()
                         val minutes = (ms / 1000) / 60
@@ -712,7 +805,7 @@ class MainViewModel(
                             timeMs = ms,
                             text = seg.text?.trim() ?: ""
                         )
-                    }
+                    }.sortedBy { it.timeMs }
                 } else if (!response.text.isNullOrBlank()) {
                     response.text.lines().filter { it.isNotBlank() }.mapIndexed { idx, line ->
                         LyricLine(

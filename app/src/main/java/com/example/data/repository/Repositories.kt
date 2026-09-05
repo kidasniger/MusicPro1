@@ -42,6 +42,7 @@ interface MusicRepository {
     suspend fun addTrackToPlaylist(playlistId: Long, trackId: Long)
     suspend fun removeTrackFromPlaylist(playlistId: Long, trackId: Long)
     suspend fun reorderPlaylistTracks(playlistId: Long, orderedTrackIds: List<Long>)
+    suspend fun updateTrackLyrics(trackId: Long, lyrics: String)
 }
 
 class DefaultMusicRepository(
@@ -181,6 +182,10 @@ class DefaultMusicRepository(
 
     override suspend fun reorderPlaylistTracks(playlistId: Long, orderedTrackIds: List<Long>) {
         playlistDao.reorderPlaylistTracks(playlistId, orderedTrackIds)
+    }
+
+    override suspend fun updateTrackLyrics(trackId: Long, lyrics: String) = withContext(Dispatchers.IO) {
+        trackDao.updateEmbeddedLyrics(trackId, lyrics)
     }
 }
 

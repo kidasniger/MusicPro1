@@ -147,6 +147,7 @@ fun AlbumsScreen(
                         TrackCoverArt(
                             gradientStr = sampleTrack?.coverGradient,
                             title = album,
+                            coverArtUri = sampleTrack?.coverArtUri,
                             size = 50.dp,
                             shape = RoundedCornerShape(10.dp)
                         )

@@ -40,6 +40,9 @@ interface TrackDao {
     @Query("UPDATE tracks SET isFavorite = :isFavorite WHERE id = :trackId")
     suspend fun setFavorite(trackId: Long, isFavorite: Boolean)
 
+    @Query("UPDATE tracks SET embeddedLyrics = :lyrics WHERE id = :trackId")
+    suspend fun updateEmbeddedLyrics(trackId: Long, lyrics: String)
+
     @Query("SELECT COUNT(*) FROM tracks")
     suspend fun getTrackCount(): Int
 

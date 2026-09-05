@@ -110,6 +110,7 @@ fun MiniPlayer(
                 TrackCoverArt(
                     gradientStr = activeTrack.coverGradient,
                     title = activeTrack.title,
+                    coverArtUri = activeTrack.coverArtUri,
                     size = 42.dp,
                     shape = RoundedCornerShape(10.dp)
                 )

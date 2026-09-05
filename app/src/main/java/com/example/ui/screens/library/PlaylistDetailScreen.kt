@@ -413,6 +413,7 @@ fun PlaylistDetailScreen(
                                 TrackCoverArt(
                                     gradientStr = track.coverGradient,
                                     title = track.title,
+                                    coverArtUri = track.coverArtUri,
                                     size = 40.dp,
                                     shape = RoundedCornerShape(8.dp)
                                 )
@@ -552,6 +553,7 @@ private fun ReorderableTrackItem(
             TrackCoverArt(
                 gradientStr = track.coverGradient,
                 title = track.title,
+                coverArtUri = track.coverArtUri,
                 size = 44.dp,
                 shape = RoundedCornerShape(8.dp)
             )

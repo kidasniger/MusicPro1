@@ -41,15 +41,33 @@ object AudioMetadataExtractor {
             } catch (_: Exception) {}
         }
 
-        // Si pas de pochette embarquée directe, tenter via MediaStore AlbumArt
+        // Si pas de pochette embarquée directe, tenter via MediaStore AlbumArt ou loadThumbnail (Android 10+)
+        if (coverArtUri == null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && uriString.startsWith("content://")) {
+            try {
+                val thumb = context.contentResolver.loadThumbnail(Uri.parse(uriString), android.util.Size(512, 512), null)
+                val coversDir = File(context.cacheDir, "covers")
+                if (!coversDir.exists()) coversDir.mkdirs()
+                val coverFile = File(coversDir, "cover_${trackId}.jpg")
+                coverFile.outputStream().use { out ->
+                    thumb.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+                }
+                coverArtUri = Uri.fromFile(coverFile).toString()
+            } catch (_: Throwable) {
+            }
+        }
+
         if (coverArtUri == null && albumId != null && albumId > 0) {
             try {
                 val artworkUri = ContentUris.withAppendedId(
                     Uri.parse("content://media/external/audio/albumart"),
                     albumId
                 )
-                context.contentResolver.openInputStream(artworkUri)?.use {
-                    coverArtUri = artworkUri.toString()
+                context.contentResolver.openInputStream(artworkUri)?.use { input ->
+                    val coversDir = File(context.cacheDir, "covers")
+                    if (!coversDir.exists()) coversDir.mkdirs()
+                    val coverFile = File(coversDir, "cover_album_${albumId}.jpg")
+                    coverFile.outputStream().use { out -> input.copyTo(out) }
+                    coverArtUri = Uri.fromFile(coverFile).toString()
                 }
             } catch (_: Exception) {
                 // Pas d'artwork dans MediaStore

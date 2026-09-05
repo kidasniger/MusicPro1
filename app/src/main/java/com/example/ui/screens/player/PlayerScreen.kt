@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
@@ -135,6 +136,7 @@ fun PlayerScreen(
     onNavigateToEqualizer: () -> Unit = {},
     onNavigateToQueue: () -> Unit = {},
     onNavigateToTrackInfo: () -> Unit = {},
+    onNavigateToLockScreen: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (activeTrack == null) {
@@ -254,6 +256,18 @@ fun PlayerScreen(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onNavigateToLockScreen,
+                        modifier = Modifier.testTag("player_lock_screen_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Écran de verrouillage",
+                            tint = CyanAccent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
                     IconButton(
                         onClick = { showVariantDialog = true },
                         modifier = Modifier.testTag("player_variant_top_button")
@@ -393,6 +407,22 @@ fun PlayerScreen(
                         )
 
                         DropdownMenuItem(
+                            text = { Text("Écran de verrouillage", color = TextPrimary) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showOptionsMenu = false
+                                onNavigateToLockScreen()
+                            }
+                        )
+
+                        DropdownMenuItem(
                             text = { Text("File d'attente complète", color = TextPrimary) },
                             leadingIcon = {
                                 Icon(
@@ -478,6 +508,7 @@ fun PlayerScreen(
                             TrackCoverArt(
                                 gradientStr = activeTrack.coverGradient,
                                 title = activeTrack.title,
+                                coverArtUri = activeTrack.coverArtUri,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -499,6 +530,7 @@ fun PlayerScreen(
                             TrackCoverArt(
                                 gradientStr = activeTrack.coverGradient,
                                 title = activeTrack.title,
+                                coverArtUri = activeTrack.coverArtUri,
                                 size = 270.dp,
                                 isVinyl = true
                             )
@@ -726,48 +758,6 @@ fun PlayerScreen(
                         },
                         modifier = Modifier.size(24.dp)
                     )
-                }
-            }
-
-            // Bouton explicite "Lecture d'un seul morceau" (Loop 1 track)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            if (repeatMode == 1) PurpleAccent.copy(alpha = 0.22f)
-                            else Color.White.copy(alpha = 0.06f)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = if (repeatMode == 1) PurpleAccent else BorderSubtle,
-                            shape = RoundedCornerShape(20.dp)
-                        )
-                        .clickable { onToggleRepeatOne() }
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
-                        .testTag("player_single_track_loop_button")
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.RepeatOne,
-                            contentDescription = "Lecture d'un seul morceau",
-                            tint = if (repeatMode == 1) PurpleAccent else TextMuted,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (repeatMode == 1) "Lecture d'un seul morceau : ACTIVÉE" else "Lecture d'un seul morceau",
-                            fontSize = 11.sp,
-                            fontWeight = if (repeatMode == 1) FontWeight.Bold else FontWeight.Medium,
-                            color = if (repeatMode == 1) PurpleAccent else TextSecondary
-                        )
-                    }
                 }
             }
 

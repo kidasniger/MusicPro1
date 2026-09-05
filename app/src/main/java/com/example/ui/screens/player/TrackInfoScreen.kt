@@ -148,6 +148,7 @@ fun TrackInfoScreen(
                     TrackCoverArt(
                         gradientStr = track.coverGradient,
                         title = track.title,
+                        coverArtUri = track.coverArtUri,
                         size = 72.dp,
                         modifier = Modifier.clip(RoundedCornerShape(14.dp))
                     )

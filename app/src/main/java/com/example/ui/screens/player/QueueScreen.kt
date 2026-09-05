@@ -167,6 +167,7 @@ fun QueueScreen(
                     TrackCoverArt(
                         gradientStr = track.coverGradient,
                         title = track.title,
+                        coverArtUri = track.coverArtUri,
                         size = 48.dp,
                         shape = RoundedCornerShape(10.dp)
                     )
@@ -255,6 +256,7 @@ fun QueueScreen(
                             TrackCoverArt(
                                 gradientStr = track.coverGradient,
                                 title = track.title,
+                                coverArtUri = track.coverArtUri,
                                 size = 40.dp,
                                 shape = RoundedCornerShape(8.dp)
                             )
